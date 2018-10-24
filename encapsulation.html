@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>封装</title>
+</head>
+<body>
+
+<script>
+window.onload = function () {
+    // 方法1：使用“_”开头命名私用成员 缺点：并非真正意义的封装。
+
+    /*
+    方法2：使用闭包实现私用成员
+
+    缺点：对于门户大开的方式，方法都定义在原型中，因此实例共享一份，而使用闭包实现的方式，每个实例都创建一份特权方法和私用方法的副本，因此更耗内存。
+
+    */
+    function Book (newName, newAuthor) {
+        var name, author; // 私用属性
+
+        function checkName (newName) { // 私用方法
+            return newName === 'js';
+        };
+
+        // 特权方法：能在外部调用，能访问到私用属性的方法。
+        this.setName = function(newName) {
+            if (!checkName(newName)) { // 可对用户将设置的值作判断，一切皆在掌控中！
+                throw new Error('Book: invalid name');
+            }
+            name = newName;
+        }
+
+        this.getName = function() {
+            return name;
+        }
+
+        this.setAuthor = function(newAuthor) {
+            author = newAuthor;
+        }
+
+        this.getAuthor = function() {
+            return author;
+        }
+
+        this.setName(newName); // 初始化
+        this.setAuthor(newAuthor)
+    };
+
+    Book.prototype = {
+        // 不需直接访问私用属性的方法可定义在原型中
+        display: function() {
+
+        }
+    };
+
+    let book = new Book('js', 'ozy');
+    console.log(book.name); // undefined;
+    console.log(book.getName()); // 'js';
+
+
+    // 使用立刻调用函数优化一下下
+    // Book每次都只是调用返回的函数。
+    let Book = (function() {
+
+        //------实例公用，不需外部调用，不需访问私用成员的方法/属性写在此处------\\
+
+        /*
+          私用静态属性/方法
+          把一些不需要每个实例都生成副本的属性和方法放在此处，供每个实例公用，不必创建一份副本。
+          一些不需要访问任何实例数据的方法，应该写在此处作为私用静态方法。
+        */
+        let bookNum = 0;
+        function checkName(newName) {
+            return newName === 'js';
+        }
+
+        return function(newName, newAuthor) {
+            let name, author;
+
+            this.setName = function(newName) {
+                if (!checkName(newName)) {
+                    throw new Error('Book: invalid name');
+                }
+                name = newName;
+            }
+
+            this.getName = function() {
+                return name;
+            }
+
+            this.setAuthor = function(newAuthor) {
+                author = newAuthor;
+            }
+
+            this.getAuthor = function() {
+                return author;
+            }
+
+            bookNum++
+            if (bookNum > 50) {
+                throw new Error('Book: 最多只能创建50本书籍！');
+            }
+
+            this.setName(newName); // 初始化
+            this.setAuthor(newAuthor)
+        }
+    })
+
+    Book.prototype = {
+        //------实例公用，需要外部调用，不需直接访问私用成员的方法/属性写在此处------\\
+        display: function() {
+
+        }
+    };
+
+    // 公用静态方法
+    //------处理与类整体相关任务的方法 写出公用静态方法------\\
+    Book.convert = function() {
+
+    }
+};
+</script>
+</body>
+</html>
