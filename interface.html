@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Document</title>
+</head>
+<body>
+
+<script>
+window.onload = function () {
+
+    /*
+        一个接口中包含若干个方法；
+        利用ensureImplements检测某个对象是否实现了接口中的方法；
+    */
+
+    /*
+        @param name 接口名称
+        @param methods 接口包含的方法
+    */
+    function Interface (name, methods) {
+      if (arguments.length !== 2) {
+        throw new Error('Interface构造函数：期望两个参数！');
+      }
+
+      this.name = name;
+      this.methods = [];
+
+      // 深复制methods数组
+      for (let i of methods) {
+        if (typeof i !== 'string') {
+          throw new Error('Interface构造函数：期望方法名称类型为字符串!');
+        }
+
+        this.methods.push(i);
+      }
+    }
+
+    /*
+        @param obj 需要检查的对象
+    */
+    Interface.ensureImplements = function (obj) {
+      if (arguments.length < 2) {
+        throw new Error('Interface.ensureImplements方法：期望参数大于2！');
+      }
+
+      for (let i = 1, len = arguments.length; i < len; i++) {
+        let interface = arguments[i];
+
+        // 检测是不是Interface实例
+        if (interface.constructor !== Interface) {
+          throw new Error('Interface.ensureImplements方法：期望第二个以上的参数为Interface实例！')
+        }
+
+
+        for (let j = 0, methodsLen = interface.methods.length; j < methodsLen; j++) {
+          let curMethod = interface.methods[j];
+
+          if (!obj[curMethod] || typeof obj[curMethod] !== 'function') {
+            throw new Error(`Interface.ensureImplements方法：在 object 中没有找到 ${interface.name} 接口中的 ${curMethod}方法!`);
+          }
+        }
+      }
+    };
+
+    // 使用
+    let person = new Interface('person', ['think', 'eat']);
+    let negro = new Interface('negro', ['rap']);
+
+    function test (obj) {
+      Interface.ensureImplements(obj, person);
+    }
+
+    test({
+      think() {},
+      // eat() {}
+    }); // Uncaught Error: Interface.ensureImplements方法：在 object 中没有找到 person 接口中的 eat方法!
+
+    function test1 (obj) {
+      Interface.ensureImplements(obj, person, negro);
+    }
+
+    test1({
+      think() {},
+      eat() {}
+    }); // Uncaught Error: Interface.ensureImplements方法：在 object 中没有找到 negro 接口中的 rap方法!
+}
+</script>
+</body>
+</html>
