@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>常量</title>
+</head>
+<body>
+
+<script>
+window.onload = function() {
+    // 方法1 使用es6的const
+
+    // 方法2 创建只有取值器而没有赋值器的私用变量
+
+    let Class = (function() {
+        let COUNT = 30; // 私用变量
+
+        let ctor = function() {
+            this.func = function() { // 公用方法
+
+            }
+        }
+
+        ctor.getCount = function() { // 公用静态方法
+            return COUNT;
+        }
+
+        return ctor;
+    })();
+
+    Class.prototype = {
+        // …………
+    }
+
+    console.log(Class.getCount());
+}
+</script>
+</body>
+</html>
