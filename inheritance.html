@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>继承</title>
+</head>
+<body>
+
+<script>
+window.onload = function() {
+    /*
+        继承有多种方式，参考小红书！
+    */
+
+    // 原型式继承
+    let Person1 = {
+        name: '人',
+        getName: function() {
+            return this.name;
+        },
+        skin: ['yellow', 'white', 'black']
+    }
+
+    let student = Object.create(Person1);
+    console.log(student.getName()); // 人
+
+    // 缺点如下
+    student.skin.push('green');
+    console.log(Person1.skin) // ['yellow', 'white', 'black', 'green']
+
+    /*  缺点解决方法
+
+        // 给子赋实例属性
+        student.skin = [];
+
+        // 但是并不知道父的skin中的元素，可使用工厂方法创建
+        Person1.createSkin = function() {
+            return ['yellow', 'white', 'black'];
+        }
+        Person1.skin = Person1.createSkin();
+
+        var student = Object.create(Person1);
+        student.skin = Person1.createSkin();
+    */
+
+
+    // 类式继承 ↓↓↓
+
+    // 组合继承
+    // 缺点：父实例属性，在子实例与原型中重复了。
+    function Person(name) {
+        this.name = name;
+        this.skin = ['yellow', 'white', 'black']
+    }
+    Person.prototype.getName = function() {
+        return this.name;
+    }
+
+    function Author(name, books) {
+        Person.call(this, name);
+        this.books = books;
+    }
+    Author.prototype = new Person();
+
+    /*
+        原型的constructor 和 实例的constructor 指向构造函数
+        把Author的原型修改为Person实例后， constructor会变成Person实例的constructor 即Person，所以要把它改回来；
+    */
+    Author.prototype.constructor = Author;
+
+    let a = new Author('张三');
+    console.log(a)
+    console.log(a.getName()); // 张三
+
+
+
+    // extend继承：解决了以上所说的缺点，相当于把父实例中的属性清空了，再继承。 而且不用创建父实例，而是以新的F代替。
+    function extend(subClass, superClass) {
+        var F = function() {};
+        F.prototype = superClass.prototype;
+        subClass.prototype = new F();
+        subClass.prototype.constructor = superClass;
+    }
+
+    function Cook(name, foods) {
+        Person.call(this, name);
+        this.foods = foods;
+    }
+    extend(Cook, Person);
+
+    let cook = new Cook('王厨子', ['清蒸鱼', '佛跳墙']);
+    console.log(cook);
+
+
+
+
+    /*
+        升级版extend:
+        弱化了父子类的耦合（例如改为继承Animal，那么只需改extendPlus的参数2为Animal就行，不需再到Teacher类中修改Animal.call(this)）
+        增加了superClass，使得子类中可访问到父类原型。
+    */
+    function extendPlus (subClass, superClass) {
+        var F = function() {};
+        F.prototype = superClass.prototype;
+        subClass.prototype = new F();
+        subClass.prototype.constructor = subClass;
+
+        subClass.superClass = superClass.prototype;
+        if (superClass.prototype.constructor == Object.prototype.constructor) {
+            subClass.prototype.constructor = superClass; // 如果继承自Object，则subClass.prototype.constructor设置为Object。
+        }
+    }
+
+    function Teacher(name, subjects) {
+        Teacher.superClass.constructor.call(this, name); // 弱化耦合
+        this.subjects = subjects;
+    }
+    extendPlus(Teacher, Person);
+
+    // 既要重定义父类中方法，又要访问原来方法时。superClass派上用场了。
+    Teacher.prototype.getName = function() {
+        var name = Teacher.superClass.getName.call(this); // 返回this.name ，将this指定为Teacher的this。
+        return name + '教的科目是' + this.subjects.join('、');
+    };
+
+    let t = new Teacher('张老师', ['语文', '体育']);
+    console.log(t)
+    console.log(t.getName())
+};
+</script>
+</body>
+</html>
