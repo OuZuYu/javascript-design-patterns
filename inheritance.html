@@ -193,6 +193,62 @@ window.onload = function() {
 
     let boy = new Boy();
     console.log(boy.serialize);
+
+    // 实例：就地编辑
+
+    // 往parent添加一个值为value的文本， 点击可编辑。
+    function EditInPlaceField(id, parent, value = 'default name') {
+        this.id = id;
+        this.value = value;
+        this.parent = parent;
+    }
+
+    EditInPlaceField.prototype = {
+        // 创建dom
+        createElement() {
+            this.containerElement = document.createElement('div');
+
+            this.staticElement = document.createElement('span');
+            this.staticElement.innerHTML = this.value;
+
+            this.fieldElement = document.createElement('input');
+            this.fieldElement.type = 'text';
+            this.fieldElement.value = this.value;
+
+            this.saveButton = document.createElement('input');
+            this.saveButton.type = 'button';
+            this.saveButton.value = 'Save';
+
+            this.cancelButton = document.createElement('input');
+            this.cancelButton.type = 'button';
+            this.cancelButton.value = 'Cancel';
+
+            this.containerElement.appendChild(this.staticElement);
+            this.containerElement.appendChild(this.fieldElement);
+            this.containerElement.appendChild(this.saveButton);
+            this.containerElement.appendChild(this.cancelButton);
+
+            this.convertToText();
+        },
+
+        // 显示文本
+        convertToText() {
+            this.staticElement.style.display = 'inline';
+            this.fieldElement.style.display = 'none';
+            this.saveButton.style.display = 'none';
+            this.cancelButton.style.display = 'none';
+
+            this.setValue(this.value);
+        },
+
+        // 设置值
+        setValue(value) {
+            this.staticElement.innerHTML = value;
+            this.fieldElement.value = value;
+        }
+
+
+    }
 };
 </script>
 </body>
