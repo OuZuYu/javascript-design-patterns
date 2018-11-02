@@ -9,7 +9,7 @@
 <script>
 window.onload = function() {
     /*
-        继承有多种方式，参考小红书！
+        继承有多种方式，可参考小红书！
     */
 
     // 原型式继承
@@ -30,10 +30,10 @@ window.onload = function() {
 
     /*  缺点解决方法
 
-        // 给子赋实例属性
+        // 给子赋实例属性，覆盖继承的原型属性。
         student.skin = [];
 
-        // 但是并不知道父的skin中的元素，可使用工厂方法创建
+        // 但是像上面这么做并不知道父的skin中的元素，可使用工厂方法创建。
         Person1.createSkin = function() {
             return ['yellow', 'white', 'black'];
         }
@@ -46,8 +46,9 @@ window.onload = function() {
 
     // 类式继承 ↓↓↓
 
-    // 组合继承
-    // 缺点：父实例属性，在子实例与原型中重复了。
+    /* 组合继承
+       缺点：父实例属性，在子实例与原型中重复了。
+    */
     function Person(name) {
         this.name = name;
         this.skin = ['yellow', 'white', 'black']
@@ -74,7 +75,9 @@ window.onload = function() {
 
 
 
-    // extend继承：解决了以上所说的缺点，相当于把父实例中的属性清空了，再继承。 而且不用创建父实例，而是以新的F代替。
+    /* extend继承：
+        解决了以上所说的缺点，相当于把父实例中的属性清空了，再继承。 而且不用创建父实例，而是以新的F代替。
+    */
     function extend(subClass, superClass) {
         var F = function() {};
         F.prototype = superClass.prototype;
@@ -126,6 +129,70 @@ window.onload = function() {
     let t = new Teacher('张老师', ['语文', '体育']);
     console.log(t)
     console.log(t.getName())
+
+
+    /*
+        原型式继承与类式继承比较：
+        类式继承更为程序员熟悉，毕竟只有js有原型式继承。
+        原型式继承更节省内存，子类都是公用一份实例，必要时需要覆盖。
+    */
+
+    /*
+        封装与继承：
+        只有公用和特权成员能被继承下来
+        子类不能直接访问到父类的私用成员，因此不能在子类添加能够访问它们的新的特权方法，只可通过继承下来的特权成员间接访问。
+    */
+    function Test(v) {
+        var name = 'test';
+        this.v = v;
+    }
+    function SubTest(v) {
+        Test.call(this, v);
+    }
+    SubTest.prototype = new Test();
+
+    let s = new SubTest(1);
+    console.log(s.name); // undefined
+
+    /*  掺元类：
+        包含通用方法的类称为掺元类，它一般不会被实例化或直接调用，只是为其他类提供自己的方法(通过augment方法)。
+
+        有一种重用代码的方法不需严格的继承，只需将多个类通用的方法写到掺元类，供其他类扩充！
+        缺点：适用场合不多，只有通用到各种类都能派上用场的方法才适用。
+    */
+
+    function augment(receivingClass, givingClass) {
+        if (arguments[2]) { // 取参数中指定的方法
+            for (let i = 2, len = arguments.length; i < len; i++) {
+                receivingClass.prototype[arguments[i]] = givingClass.prototype[arguments[i]];
+            }
+        } else { // 取所有方法
+            for (methodName in givingClass.prototype) {
+                if (!receivingClass.prototype[methodName]) {
+                    receivingClass.prototype[methodName] = givingClass.prototype[methodName];
+                }
+            }
+        }
+    }
+
+    let Mixin = function() {};
+    Mixin.prototype = {
+        serialize: function() {
+            var output = [];
+            for (key in this) {
+                output.push(key + ':' + this[key]);
+            }
+            return output.join(', ');
+        }
+    }
+
+    function Boy() {
+
+    };
+    augment(Boy, Mixin);
+
+    let boy = new Boy();
+    console.log(boy.serialize);
 };
 </script>
 </body>
