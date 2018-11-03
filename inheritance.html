@@ -669,6 +669,17 @@ window.onload = function() {
     augment(EditInPlaceAreaMixin, EditInPlaceMixin);
 
     let multipleLinesMixin = new EditInPlaceAreaMixin('multipleLinesMixin', document.body, '我是多行文本，使用掺元类写法，点我编辑！');
+
+    /*
+        继承适用场景：
+        1 继承难以理解，应该只在利大于弊的情况下才使用。
+        2 建立类或对象继承关系，实现代码重用。由于一些方法只定义一次，更易于维护。
+    */
+
+    // 在内存效率较为重要时，使用原型式继承。
+    // 程序员更熟悉面向对象，则使用类式继承。
+    // 各种类都通用的方法（如：序列号），使用掺元类。
+
 };
 </script>
 </body>
