@@ -3,9 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <title>继承</title>
+
+    <style>
+        .container {
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body>
-
+<h1>就地编辑继承实例：</h1>
 <script>
 window.onload = function() {
     /*
@@ -108,21 +114,27 @@ window.onload = function() {
         subClass.prototype = new F();
         subClass.prototype.constructor = subClass;
 
-        subClass.superClass = superClass.prototype;
+        subClass.superclass = superClass.prototype;
+
+        /*
+            以下代码用于确保超类的constructor已被正确设置。
+            如果继承自Object，则subClass.prototype.constructor设置为Object。
+        */
         if (superClass.prototype.constructor == Object.prototype.constructor) {
-            subClass.prototype.constructor = superClass; // 如果继承自Object，则subClass.prototype.constructor设置为Object。
+            // 比如超类的prototype被赋值为新的对象，那么原本的constructor会被覆盖，于是会进入此处。
+            subClass.prototype.constructor = superClass;
         }
     }
 
     function Teacher(name, subjects) {
-        Teacher.superClass.constructor.call(this, name); // 弱化耦合
+        Teacher.superclass.constructor.call(this, name); // 弱化耦合
         this.subjects = subjects;
     }
     extendPlus(Teacher, Person);
 
     // 既要重定义父类中方法，又要访问原来方法时。superClass派上用场了。
     Teacher.prototype.getName = function() {
-        var name = Teacher.superClass.getName.call(this); // 返回this.name ，将this指定为Teacher的this。
+        var name = Teacher.superclass.getName.call(this); // 返回this.name ，将this指定为Teacher的this。
         return name + '教的科目是' + this.subjects.join('、');
     };
 
@@ -201,12 +213,19 @@ window.onload = function() {
         this.id = id;
         this.value = value;
         this.parent = parent;
+
+        this.createElement(this.id);
+        this.attachEvent();
     }
 
     EditInPlaceField.prototype = {
+        constructor: EditInPlaceField,
+
         // 创建dom
-        createElement() {
+        createElement(id) {
             this.containerElement = document.createElement('div');
+            this.containerElement.id = id;
+            this.containerElement.className = 'container'
 
             this.staticElement = document.createElement('span');
             this.staticElement.innerHTML = this.value;
@@ -228,6 +247,7 @@ window.onload = function() {
             this.containerElement.appendChild(this.saveButton);
             this.containerElement.appendChild(this.cancelButton);
 
+            this.parent.appendChild(this.containerElement);
             this.convertToText();
         },
 
@@ -245,10 +265,410 @@ window.onload = function() {
         setValue(value) {
             this.staticElement.innerHTML = value;
             this.fieldElement.value = value;
+        },
+
+        attachEvent() {
+            this.staticElement.addEventListener('click', () => {
+                this.convertToEditable();
+            });
+            this.saveButton.addEventListener('click', () => {
+                this.save();
+            });
+            this.cancelButton.addEventListener('click', () => {
+                this.cancel();
+            });
+        },
+
+        convertToEditable() {
+            this.staticElement.style.display = 'none';
+            this.fieldElement.style.display = 'inline';
+            this.saveButton.style.display = 'inline';
+            this.cancelButton.style.display = 'inline';
+
+            this.setValue(this.value);
+        },
+
+        save() {
+            this.value = this.getValue();
+            // 此处可执行ajax...
+
+            // success 回调
+            this.convertToText();
+        },
+
+        cancel() {
+            this.convertToText();
+        },
+
+        getValue() {
+            return this.fieldElement.value;
         }
-
-
     }
+
+    let singleLine = new EditInPlaceField('title', document.body, '我是单行文本，使用构造函数写法，点我可编辑！');
+    let singleLineVal = singleLine.getValue(); // 可获取value
+
+    // 现在要实现一个多行文本的就地编辑，与EditInPlaceField类有很多共同之处，所以使用继承，避免编写重复代码。
+    function EditInPlaceArea(id, parent, value = 'default') {
+        EditInPlaceArea.superclass.constructor.call(this, id, parent, value);
+    }
+    extendPlus(EditInPlaceArea, EditInPlaceField);
+
+    // 继承之后，重定义一些方法。
+    EditInPlaceArea.prototype.createElement = function(id) {
+        this.containerElement = document.createElement('div');
+        this.containerElement.id = id;
+        this.containerElement.className = 'container'
+
+        this.staticElement = document.createElement('p');
+        this.staticElement.innerHTML = this.value;
+
+        this.fieldElement = document.createElement('textarea');
+        this.fieldElement.value = this.value;
+
+        this.saveButton = document.createElement('input');
+        this.saveButton.type = 'button';
+        this.saveButton.value = 'Save';
+
+        this.cancelButton = document.createElement('input');
+        this.cancelButton.type = 'button';
+        this.cancelButton.value = 'Cancel';
+
+        this.containerElement.appendChild(this.staticElement);
+        this.containerElement.appendChild(this.fieldElement);
+        this.containerElement.appendChild(this.saveButton);
+        this.containerElement.appendChild(this.cancelButton);
+
+        this.parent.appendChild(this.containerElement);
+        this.convertToText();
+    }
+
+    EditInPlaceArea.prototype.convertToText = function() {
+        this.staticElement.style.display = 'block';
+        this.fieldElement.style.display = 'none';
+        this.saveButton.style.display = 'none';
+        this.cancelButton.style.display = 'none';
+
+        this.setValue(this.value);
+    }
+
+    EditInPlaceArea.prototype.convertToEditable = function() {
+        this.staticElement.style.display = 'none';
+        this.fieldElement.style.display = 'block';
+        this.saveButton.style.display = 'inline';
+        this.cancelButton.style.display = 'inline';
+
+        this.setValue(this.value);
+    }
+
+    let multipleLines = new EditInPlaceArea('multiple', document.body, '我是多行文本，使用构造函数写法，继承自单行就地编辑（类式继承）,点我可编辑!');
+
+    /*
+        使用原型式继承改写以上例子。
+        可以看到，原型式继承不使用构造函数，而是定义了configure函数，其他和前一个方案几乎一模一样。
+    */
+    let EditInPlaceFieldProto = {
+        configure(id, parent, value = 'default') {
+            this.id = id;
+            this.parent = parent;
+            this.value = value;
+
+            this.createElement();
+            this.attachEvent();
+        },
+
+        createElement(id) {
+            this.containerElement = document.createElement('div');
+            this.containerElement.id = id;
+            this.containerElement.className = 'container'
+
+            this.staticElement = document.createElement('span');
+            this.staticElement.innerHTML = this.value;
+
+            this.fieldElement = document.createElement('input');
+            this.fieldElement.type = 'text';
+            this.fieldElement.value = this.value;
+
+            this.saveButton = document.createElement('input');
+            this.saveButton.type = 'button';
+            this.saveButton.value = 'Save';
+
+            this.cancelButton = document.createElement('input');
+            this.cancelButton.type = 'button';
+            this.cancelButton.value = 'Cancel';
+
+            this.containerElement.appendChild(this.staticElement);
+            this.containerElement.appendChild(this.fieldElement);
+            this.containerElement.appendChild(this.saveButton);
+            this.containerElement.appendChild(this.cancelButton);
+
+            this.parent.appendChild(this.containerElement);
+            this.convertToText();
+        },
+
+        // 显示文本
+        convertToText() {
+            this.staticElement.style.display = 'inline';
+            this.fieldElement.style.display = 'none';
+            this.saveButton.style.display = 'none';
+            this.cancelButton.style.display = 'none';
+
+            this.setValue(this.value);
+        },
+
+        // 设置值
+        setValue(value) {
+            this.staticElement.innerHTML = value;
+            this.fieldElement.value = value;
+        },
+
+        attachEvent() {
+            this.staticElement.addEventListener('click', () => {
+                this.convertToEditable();
+            });
+            this.saveButton.addEventListener('click', () => {
+                this.save();
+            });
+            this.cancelButton.addEventListener('click', () => {
+                this.cancel();
+            });
+        },
+
+        convertToEditable() {
+            this.staticElement.style.display = 'none';
+            this.fieldElement.style.display = 'inline';
+            this.saveButton.style.display = 'inline';
+            this.cancelButton.style.display = 'inline';
+
+            this.setValue(this.value);
+        },
+
+        save() {
+            this.value = this.getValue();
+            // 此处可执行ajax...
+
+            // success 回调
+            this.convertToText();
+        },
+
+        cancel() {
+            this.convertToText();
+        },
+
+        getValue() {
+            return this.fieldElement.value;
+        }
+    }
+
+    let singleLineProto = Object.create(EditInPlaceFieldProto); // 继承一份下来，不改乱原对象。
+    singleLineProto.configure('singleLineProto', document.body, '我是单行文本，使用对象式写法，点我编辑！');
+
+    let EditInPlaceAreaProto = Object.create(EditInPlaceFieldProto);
+
+    EditInPlaceAreaProto.createElement = function (id) {
+        this.containerElement = document.createElement('div');
+        this.containerElement.id = id;
+        this.containerElement.className = 'container'
+
+        this.staticElement = document.createElement('p');
+        this.staticElement.innerHTML = this.value;
+
+        this.fieldElement = document.createElement('textarea');
+        this.fieldElement.value = this.value;
+
+        this.saveButton = document.createElement('input');
+        this.saveButton.type = 'button';
+        this.saveButton.value = 'Save';
+
+        this.cancelButton = document.createElement('input');
+        this.cancelButton.type = 'button';
+        this.cancelButton.value = 'Cancel';
+
+        this.containerElement.appendChild(this.staticElement);
+        this.containerElement.appendChild(this.fieldElement);
+        this.containerElement.appendChild(this.saveButton);
+        this.containerElement.appendChild(this.cancelButton);
+
+        this.parent.appendChild(this.containerElement);
+        this.convertToText();
+    }
+
+    EditInPlaceAreaProto.convertToText = function () {
+        this.staticElement.style.display = 'block';
+        this.fieldElement.style.display = 'none';
+        this.saveButton.style.display = 'none';
+        this.cancelButton.style.display = 'none';
+
+        this.setValue(this.value);
+    }
+
+    EditInPlaceAreaProto.convertToEditable = function () {
+        this.staticElement.style.display = 'none';
+        this.fieldElement.style.display = 'block';
+        this.saveButton.style.display = 'inline';
+        this.cancelButton.style.display = 'inline';
+
+        this.setValue(this.value);
+    }
+
+    let multipleLinesProto = Object.create(EditInPlaceAreaProto);
+    multipleLinesProto.configure('multipleLinesProto', document.body, '我是多行文本，继承自继承单行文本（原型式继承），点我编辑！');
+
+    function EditInPlaceMixin() {};
+    EditInPlaceMixin.prototype = {
+        createElement(id) {
+            this.containerElement = document.createElement('div');
+            this.containerElement.id = id;
+            this.containerElement.className = 'container'
+
+            this.staticElement = document.createElement('span');
+            this.staticElement.innerHTML = this.value;
+
+            this.fieldElement = document.createElement('input');
+            this.fieldElement.type = 'text';
+            this.fieldElement.value = this.value;
+
+            this.saveButton = document.createElement('input');
+            this.saveButton.type = 'button';
+            this.saveButton.value = 'Save';
+
+            this.cancelButton = document.createElement('input');
+            this.cancelButton.type = 'button';
+            this.cancelButton.value = 'Cancel';
+
+            this.containerElement.appendChild(this.staticElement);
+            this.containerElement.appendChild(this.fieldElement);
+            this.containerElement.appendChild(this.saveButton);
+            this.containerElement.appendChild(this.cancelButton);
+
+            this.parent.appendChild(this.containerElement);
+            this.convertToText();
+        },
+
+        // 显示文本
+        convertToText() {
+            this.staticElement.style.display = 'inline';
+            this.fieldElement.style.display = 'none';
+            this.saveButton.style.display = 'none';
+            this.cancelButton.style.display = 'none';
+
+            this.setValue(this.value);
+        },
+
+        // 设置值
+        setValue(value) {
+            this.staticElement.innerHTML = value;
+            this.fieldElement.value = value;
+        },
+
+        attachEvent() {
+            this.staticElement.addEventListener('click', () => {
+                this.convertToEditable();
+            });
+            this.saveButton.addEventListener('click', () => {
+                this.save();
+            });
+            this.cancelButton.addEventListener('click', () => {
+                this.cancel();
+            });
+        },
+
+        convertToEditable() {
+            this.staticElement.style.display = 'none';
+            this.fieldElement.style.display = 'inline';
+            this.saveButton.style.display = 'inline';
+            this.cancelButton.style.display = 'inline';
+
+            this.setValue(this.value);
+        },
+
+        save() {
+            this.value = this.getValue();
+            // 此处可执行ajax...
+
+            // success 回调
+            this.convertToText();
+        },
+
+        cancel() {
+            this.convertToText();
+        },
+
+        getValue() {
+            return this.fieldElement.value;
+        }
+    }
+
+    function EditInPlaceFieldMixin(id, parent, value = 'default') {
+        this.id = id;
+        this.value = value;
+        this.parent = parent;
+
+        this.createElement();
+        this.attachEvent();
+    };
+    augment(EditInPlaceFieldMixin, EditInPlaceMixin);
+
+    let singleLineMixin = new EditInPlaceFieldMixin('singleLineMixin', document.body, '我是单行文本，使用掺元类写法，点我编辑！');
+
+    function EditInPlaceAreaMixin(id, parent, value = 'default') {
+        this.id = id;
+        this.value = value;
+        this.parent = parent;
+
+        this.createElement();
+        this.attachEvent();
+    };
+    // 覆盖掺元类取来的方法
+    EditInPlaceAreaMixin.prototype.createElement = function (id) {
+        this.containerElement = document.createElement('div');
+        this.containerElement.id = id;
+        this.containerElement.className = 'container'
+
+        this.staticElement = document.createElement('p');
+        this.staticElement.innerHTML = this.value;
+
+        this.fieldElement = document.createElement('textarea');
+        this.fieldElement.value = this.value;
+
+        this.saveButton = document.createElement('input');
+        this.saveButton.type = 'button';
+        this.saveButton.value = 'Save';
+
+        this.cancelButton = document.createElement('input');
+        this.cancelButton.type = 'button';
+        this.cancelButton.value = 'Cancel';
+
+        this.containerElement.appendChild(this.staticElement);
+        this.containerElement.appendChild(this.fieldElement);
+        this.containerElement.appendChild(this.saveButton);
+        this.containerElement.appendChild(this.cancelButton);
+
+        this.parent.appendChild(this.containerElement);
+        this.convertToText();
+    }
+
+    EditInPlaceAreaMixin.prototype.convertToText = function () {
+        this.staticElement.style.display = 'block';
+        this.fieldElement.style.display = 'none';
+        this.saveButton.style.display = 'none';
+        this.cancelButton.style.display = 'none';
+
+        this.setValue(this.value);
+    }
+
+    EditInPlaceAreaMixin.prototype.convertToEditable = function () {
+        this.staticElement.style.display = 'none';
+        this.fieldElement.style.display = 'block';
+        this.saveButton.style.display = 'inline';
+        this.cancelButton.style.display = 'inline';
+
+        this.setValue(this.value);
+    }
+
+    augment(EditInPlaceAreaMixin, EditInPlaceMixin);
+
+    let multipleLinesMixin = new EditInPlaceAreaMixin('multipleLinesMixin', document.body, '我是多行文本，使用掺元类写法，点我编辑！');
 };
 </script>
 </body>
