@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>单体</title>
+</head>
+<body>
+
+<form id='regForm'>
+    <p>account: <input type="text" name="account" /></p>
+    <p>password: <input type="password" name="password" /></p>
+    <p><button type="submit">提交</button></p>
+</form>
+
+<script>
+window.onload = function() {
+    /*
+        单体是一个用来划分命名空间并将一批相关方法和属性组织在一起的的对象，如果它可以被实例化，那么只能被实例化一次！
+    */
+
+    // ##### 划分命名空间，避免命名冲突。#####
+    // 不好:
+    function findProduct(id) {
+        // ……
+    }
+
+    var a = 1;
+    var findProduct = document.getElementById('findProduct'); // 覆盖了findProduct方法
+
+    // 好： 用单体模式改良
+    var ProductTool = {
+        findProduct() {
+            // ……
+        }
+    }
+    var a = 1;
+    var findProduct = document.getElementById('findProduct'); // 不会覆盖findProduct方法
+
+    // 命名空间还可以进一步分割
+    var Alibaba = {};
+    Alibaba.Common = {}; // 存放通用方法
+    Alibaba.ErrorCodes = {}; // 储存数据
+    Alibaba.PageHandler = {}; // 存放具体的方法和属性
+
+    // ##### 包装特定网页 #####
+    /*
+        感觉像vue啊！！！！！
+        为什么使用Alibaba.RegPage而不是this呢？因为this指向有可能改变(比如把某个方法用作事件监听器时)，所以用Alibaba.RegPage更保险。
+    */
+
+   Alibaba = window.Alibaba || {};
+   Alibaba.RegPage = {
+
+        // 常量
+        FORM_ID: 'regForm',
+        OUTPUT_ID: 'regResults',
+
+        // 处理方法
+        handleSubmit(e) {
+            e.preventDefault();
+
+            // 处理表单数据
+            let data = {};
+            let inputs = Alibaba.RegPage.formEl.getElementsByTagName('input');
+
+            for (let i = 0, len = inputs.length; i < len; i++) {
+                data[inputs[i].name] = inputs[i].value;
+            }
+
+            Alibaba.RegPage.sendRegistration(data);
+        },
+
+        sendRegistration(data) {
+            console.log(data);
+
+            // XHR
+            // call displayResult(); after success
+        },
+
+        displayResult(res) {
+            Alibaba.RegPage.outputEl.innerHTML = response;
+        },
+
+        init() {
+            Alibaba.RegPage.formEl = document.getElementById(Alibaba.RegPage.FORM_ID);
+            Alibaba.RegPage.outputEl = document.getElementById(Alibaba.RegPage.OUTPUT_ID);
+
+            Alibaba.RegPage.formEl.addEventListener('submit', Alibaba.RegPage.handleSubmit);
+        }
+    }
+
+    Alibaba.RegPage.init();
+
+    // ##### 拥有私用成员的单体（和封装一章差不多） #####
+    /*
+        1 下划线表示法
+        公用方法stringToArray靠两个私用方法实现，私用方法不应该被公开，它们随时可能被修改或删除。
+        缺点：和封装一样，私用成员还是可以被引用。
+    */
+    Alibaba.DataParser = {
+        _stripWhitespace(str) {
+            return str.replace(/\s+/, '');
+        },
+
+        _stringSplit(str, delimiter) {
+            return str.split(delimiter);
+        },
+
+        stringToArray(str, delimiter, stripWS) {
+            if (stripWS) {
+                str = this._stripWhitespace(str);
+            }
+
+            return this._stringSplit(str, delimiter);
+        }
+    }
+
+    /*
+        2 使用闭包，实现真正的私有成员。
+        由于单体只被实例化一次，所以内存问题不足为谈！
+    */
+    Alibaba.DataParser = (function() {
+        function stripWhitespace(str) {
+            return str.replace(/\s+/, '');
+        };
+
+        function stringSplit(str, delimiter) {
+            return str.split(delimiter);
+        }
+
+        return {
+            stringToArray(str, delimiter, stripWS) {
+                if (stripWS) {
+                    str = stripWhitespace(str);
+                }
+
+                return stringSplit(str, delimiter);
+            }
+        }
+    })();
+
+    // ##### 惰性加载单体 #####
+    /*
+        惰性加载单体常用于必须加载大量数据的单体。
+        那些用于划分命名空间、包装特定网页、组织一些方法的单体最好还是立刻实例化。
+    */
+    // 以下例子并不适合惰性加载，立刻实例化即可，它只是为了说明惰性加载如何实现。
+    Alibaba.DataParser = (function() {
+        let uniqueInstance;
+
+        // 把所有代码放进constructor
+        function constructor() {
+            function stripWhitespace(str) {
+                return str.replace(/\s+/, '');
+            };
+
+            function stringSplit(str, delimiter) {
+                return str.split(delimiter);
+            }
+
+            return {
+                stringToArray(str, delimiter, stripWS) {
+                    if (stripWS) {
+                        str = stripWhitespace(str);
+                    }
+
+                    return stringSplit(str, delimiter);
+                }
+            }
+        }
+
+        return {
+            getInstance() {
+                if (!uniqueInstance) {
+                    uniqueInstance = constructor();
+                }
+
+                return uniqueInstance;
+            }
+        }
+    })();
+
+    // 使用时要先通过getInstance获取实例。
+    Alibaba.DataParser.getInstance().stringToArray();
+
+    // ##### 分支 #####
+    /*
+        这个和《高性能Javascript》中说到的避免多次做同一件事很像！！！
+        根据浏览器差异，创建不同的单体，运行时返回适合的。
+        分支更占内存，需要就减少判断与占用内存之间权衡。
+    */
+    let xhrFactory = (function() {
+        let standard = {
+            createXhrObject() {
+                return new XHLHttpRequest();
+            }
+        };
+
+        let activeX = {
+            createXhrObject() {
+                return new ActiveXObject('Msxml2.XMLHTTP');
+            }
+        }
+
+        // 要返回合适的，则要逐一尝试。
+        let testObj;
+        try {
+            testObj = standard.createXhrObject();
+            return standard;
+        } catch (e) {
+            try {
+                testObj = activeX.createXhrObject();
+                return activeX;
+            } catch (e) {
+                throw new Error('找不到 XHR 对象！')
+            }
+        }
+    })();
+
+    // ##### 单体模式的使用场合 #####
+    // 单体模式很常用，从划分命名空间，增强模块化来说，所有大大小小项目的适用。
+
+    // ##### 单体模式利弊 #####
+    /*
+        优点：减少命名冲突、增强模块化。
+        缺点：由于使用.访问，所以可能导致模块间强耦合（ 如在A模块调用B.func();）
+    */
+}
+</script>
+</body>
+</html>
