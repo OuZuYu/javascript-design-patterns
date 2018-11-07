@@ -7,7 +7,7 @@
     <title>单体</title>
 </head>
 <body>
-
+<h1>单体封装表单提交页</h1>
 <form id='regForm'>
     <p>account: <input type="text" name="account" /></p>
     <p>password: <input type="password" name="password" /></p>
@@ -74,6 +74,7 @@ window.onload = function() {
 
         sendRegistration(data) {
             console.log(data);
+            alert(JSON.stringify(data));
 
             // XHR
             // call displayResult(); after success
@@ -183,7 +184,7 @@ window.onload = function() {
     })();
 
     // 使用时要先通过getInstance获取实例。
-    Alibaba.DataParser.getInstance().stringToArray();
+    Alibaba.DataParser.getInstance().stringToArray('abc', ',');
 
     // ##### 分支 #####
     /*
@@ -194,7 +195,7 @@ window.onload = function() {
     let xhrFactory = (function() {
         let standard = {
             createXhrObject() {
-                return new XHLHttpRequest();
+                return new XMLHttpRequest();
             }
         };
 
@@ -225,7 +226,7 @@ window.onload = function() {
     // ##### 单体模式利弊 #####
     /*
         优点：减少命名冲突、增强模块化。
-        缺点：由于使用.访问，所以可能导致模块间强耦合（ 如在A模块调用B.func();）
+        缺点：由于使用"."访问，所以可能导致模块间强耦合（ 如在A模块调用B.func();）
     */
 }
 </script>

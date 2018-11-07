@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>链式调用</title>
+
+    <style>
+        #test {
+            display: none;
+            border: 1px solid #000;
+            widows: 100px;
+            height: 100px;
+        }
+    </style>
+</head>
+<body>
+<h1>id为test的div一秒后将出现。</h1>
+<div id="test">123</div>
+<script>
+window.onload = function() {
+    /*
+        熟悉jq的都知道链式调用。
+        链式调用其实很简单，只需返回调用方法的实例引用即可。
+    */
+    (function () {
+
+        // @param els 是一个传进来的arguments
+        function _$(els) {
+            this.elements = [];
+            for (var i = 0, len = els.length; i < len; i++) {
+                var element = els[i];
+                if (typeof element === 'string') {
+                    element = document.getElementById(element);
+                }
+                this.elements.push(element);
+            }
+        }
+
+        _$.prototype = {
+            each: function (fn) {
+                for (var i = 0, len = this.elements.length; i < len; i++) {
+                    fn.call(this, this.elements[i]);
+                }
+                return this;
+            },
+
+            setStyle: function (prop, val) {
+                this.each(function (el) {
+                    el.style[prop] = val;
+                });
+                return this;
+            },
+
+            show: function () {
+                this.each((el) => {
+                    this.setStyle('display', 'block');
+                });
+                return this;
+            },
+
+            addEvent: function (type, fn) {
+                var add = function (el) {
+                    if (window.addEventListener) {
+                        el.addEventListener(type, fn, false);
+                    } else if (window.attachEvent) {
+                        el.addEvent('on' + type, fn);
+                    }
+                };
+
+                this.each(function (el) {
+                    add(el);
+                });
+                return this;
+            }
+        }
+
+        window.$ = function () {
+            return new _$(arguments);
+        }
+
+        // 为了避免重名，可改为一个安装器。
+        /*
+        window.installHelper = function (scope, interface) {
+            scope[interface] = function () {
+                return new _$(arguments);
+            }
+        }
+        */
+
+    })();
+
+    setTimeout(() => {
+        $('test').show().setStyle('color', 'red');
+    }, 1000);
+
+    /*
+        链式调用很适合赋值器，但一些取值器你肯定希望返回你想要的数据而不是this。
+        不过还是有变通的方法。
+    */
+    function Api(name) {
+
+        this.setName = function (newName) {
+            this.name = newName;
+            return this;
+        };
+
+        /*  正常版 会终端链式调用
+        this.getName = function () {
+            return this.name;
+        }; */
+
+        // 返回的name在回调中处理，继续返回this。
+        this.getName = function (cb) {
+            cb.call(this, this.name);
+            return this;
+        }
+        this.setName(name);
+    }
+
+    let api = new Api('jq');
+    api.getName(function(name){
+        console.log(name);
+    }).setName('jquery').getName(console.log);
+};
+</script>
+</body>
+</html>
