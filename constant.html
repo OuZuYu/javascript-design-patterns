@@ -15,6 +15,13 @@ window.onload = function() {
     let Class = (function() {
         let COUNT = 30; // 私用变量
 
+        /*
+            Q:  这里为什么给构造函数命名ctor，然后 return ctor 而不是直接 return 一个方法？
+                因为要给构造函数赋予公用静态方法getCount
+
+            Q:  那为什么不写成公用方法呢？
+                因为写成公用方法的话，需要创建实例才能调用。
+        */
         let ctor = function() {
             this.func = function() { // 公用方法
 

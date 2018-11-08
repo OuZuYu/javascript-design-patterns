@@ -39,7 +39,7 @@ window.onload = function() {
         // 给子赋实例属性，覆盖继承的原型属性。
         student.skin = [];
 
-        // 但是像上面这么做并不知道父的skin中的元素，可使用工厂方法创建。
+        // 但是像上面这么做会把skin变成空数组，可使用工厂方法创建。
         Person1.createSkin = function() {
             return ['yellow', 'white', 'black'];
         }
@@ -105,24 +105,22 @@ window.onload = function() {
 
     /*
         升级版extend:
-        弱化了父子类的耦合（例如改为继承Animal，那么只需改extendPlus的参数2为Animal就行，不需再到Teacher类中修改Animal.call(this)）
         增加了superClass，使得子类中可访问到父类原型。
+        弱化了父子类的耦合（例如下例，若要改为继承Animal，那么只需改extendPlus的参数2为Animal就行，不需再到Teacher类中修改Animal.call(this)）
     */
     function extendPlus (subClass, superClass) {
         var F = function() {};
         F.prototype = superClass.prototype;
         subClass.prototype = new F();
         subClass.prototype.constructor = subClass;
-
         subClass.superclass = superClass.prototype;
 
         /*
             以下代码用于确保超类的constructor已被正确设置。
-            如果继承自Object，则subClass.prototype.constructor设置为Object。
+            比如超类的prototype被赋值为新的对象，那么原本的constructor会被覆盖，于是会进入此处，还是会把超类的constructor设置为超类。
         */
         if (superClass.prototype.constructor == Object.prototype.constructor) {
-            // 比如超类的prototype被赋值为新的对象，那么原本的constructor会被覆盖，于是会进入此处。
-            subClass.prototype.constructor = superClass;
+            superClass.prototype.constructor = superClass;
         }
     }
 
@@ -219,7 +217,7 @@ window.onload = function() {
     }
 
     EditInPlaceField.prototype = {
-        constructor: EditInPlaceField,
+        // constructor: EditInPlaceField, // 这个加不加都行，因为extendPlus会检测！！
 
         // 创建dom
         createElement(id) {
