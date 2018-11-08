@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>工厂模式</title>
+</head>
+<body>
+
+<script src="utils.js"></script>
+<script>
+window.onload = function () {
+
+    // ##### 简单工厂模式：用一个单体或者类生成并返回实例。 #####
+    /*
+        自行车商店实例：
+        一个商店有多种类型的自行车出售。
+    */
+
+    // 自行车
+    function Speedster() {};
+    Speedster.prototype = {
+        assemble () {
+            console.log('assemble');
+        },
+        wash () {
+            console.log('wash');
+        },
+        ride () {
+            console.log('ride');
+        },
+        repair () {
+            console.log('repair');
+        }
+    }
+
+    // 定义一个Bicycle接口
+    let Bicycle = new Interface('Bicycle', ['assemble', 'wash', 'ride', 'repair']);
+
+    let BicycleShop = function() {};
+    /*
+        Q:为什么不写成实例方法？
+        实例共享即可，不需每个实例都一份功能相同的方法。
+
+        Q:为什么不写成公用静态方法？
+        因为可能开多个店（多个BicycleShop实例）。
+    */
+    BicycleShop.prototype = {
+        sellBicycle(model) {
+            let bicycle;
+
+            switch(model) {
+                case 'speedster':
+                    bicycle = new Speedster();
+                    break;
+                case 'lowrider':
+                    bicycle = new Lowrider();
+                    break;
+                case 'Comfort Cruiser':
+                default:
+                    bicycle = new ComfortCruiser();
+            }
+
+            Interface.ensureImplements(bicycle, Bicycle);
+            bicycle.assemble();
+            bicycle.wash();
+
+            return bicycle;
+        }
+    };
+
+    let shop = new BicycleShop();
+    let newBike = shop.sellBicycle('speedster');
+
+    // 如果要增加新车型，就得修改sellBicycle，尽管该方法的功能、逻辑并无改变，更好的做法是把创建新自行车的工作转交给简单工厂对象。
+    // 这里使用单体，也可以是一个类，如果只需单个的话，那么写成单体的方法或者公用静态方法都行，如果有多个，比如不同品牌下不同类型的
+    // 自行车，那么可以写成类来派生子类。
+    let BicycleFactory = {
+        createBicycle(model) {
+            let bicycle;
+
+            switch (model) {
+                case 'speedster':
+                    bicycle = new Speedster();
+                    break;
+                case 'lowrider':
+                    bicycle = new Lowrider();
+                    break;
+                case 'Comfort Cruiser':
+                default:
+                    bicycle = new ComfortCruiser();
+            }
+            Interface.ensureImplements(bicycle, Bicycle);
+            return bicycle;
+        }
+    };
+
+    BicycleShop.prototype = {
+        sellBicycle(model) {
+            let bicycle = BicycleFactory.createBicycle(model);
+
+            bicycle.assemble();
+            bicycle.wash();
+
+            return bicycle;
+        }
+    };
+
+    // ##### 工厂模式：不是想简单工厂函数一样，使用另外的对象创建实例，而是推迟到子类中实例化。 #####
+    let BicycleShop2 = function () {};
+    BicycleShop2.prototype = {
+        sellBicycle(model) {
+            let bicycle = this.createBicycle(model);
+
+            bicycle.assemble();
+            bicycle.wash();
+
+            return bicycle;
+        },
+
+        // 抽象类，不能被实例化。
+        createBicycle() {
+            throw new Error('不允许操作抽象类!')
+        }
+    }
+
+    let Xds = function() {};
+    extend(Xds, BicycleShop2);
+    Xds.prototype.createBicycle = function (model) {
+        let bicycle;
+
+        switch (model) {
+            case 'speedster':
+                bicycle = new Speedster();
+                break;
+            case 'lowrider':
+                bicycle = new Lowrider();
+                break;
+            case 'Comfort Cruiser':
+            default:
+                bicycle = new ComfortCruiser();
+        }
+
+        Interface.ensureImplements(bicycle, Bicycle);
+        return bicycle;
+    };
+
+    let xds = new Xds();
+    xds.sellBicycle('speedster');
+};
+</script>
+</body>
+</html>
