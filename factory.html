@@ -12,7 +12,7 @@
 <script src="utils.js"></script>
 <script>
 window.onload = function () {
-    // 概述：工厂模式就是在一个对象中创建并返回实例。
+    // 概述：工厂模式就是在一个对象中创建并返回合适的实例。
 
     // ##### 简单工厂模式：用一个单体或者类生成并返回实例。 #####
     /*
@@ -158,13 +158,53 @@ window.onload = function () {
 
     /*
         ##### 工程模式适用场景：#####
-        1 需要用不同方式实现同一接口时（如上例，不同的自行车类型，实现同一个创建自行车实例的功能）这种类型的选择可以是显式或隐式的（上例自行车为显式，下例XHR为隐式）。
+        1 需要动态创建一些用不同方式实现同一接口的对象时，（如上例，动态创建各种实现了Bicycle接口的自行车）这种类型的选择可以是显式或隐式的（上例自行车为显式，下例XHR为隐式）。
         2 需要为对象进行复杂而相关的设置时，这种设置当然可以分散地写在各种类中，但是最好用工厂模式将这种设置集中管理。
         3 需要用各种小对象组成大对象时，像自行车的例子，可以把车轮、链条、车架等作为小对象，组成大对象自行车，某天你为自行车配上某种链条，要有一天想更换另外一种链条，使用这种工程模式使得这很容易做到。（RSS实例中演示了此场景）
     */
 
     // ##### 实例：XHR工厂 #####
+    let SimpleHandler = function() {};
+    SimpleHandler.prototype = {
+        request(method, url, callback, postVars = null) {
+            let xhr = this.createXhrObject();
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState !== 4) return;
+                (xhr.status === 200) ?
+                    callback.success(xhr.responseText, xhr.responseXML) :
+                    callback.failure(xhr.status);
+            }
 
+            xhr.open(method, url, true);
+            xhr.send(postVars);
+        },
+
+        /*
+            工厂函数：创建并返回合适的xhr实例
+            这里使用了《高性能JavaScript》中说到的避免多次做同一件事的思想，参考我的总结：https://github.com/OuZuYu/fe-style-guide
+        */
+        createXhrObject() {
+            let methods = [
+                function () { return new XMLHttpRequest(); },
+                function () { return new ActiveXObject('Msxml2.XMLHTTP') },
+                function () { return new ActiveXObject('Microsoft.XMLHTTP') }
+            ];
+
+            for (let i of methods) {
+                try {
+                    i();
+                } catch {
+                    continue;
+                }
+
+                // memoizing技术
+                this.createXhrObject = i;
+                return i;
+            }
+
+            throw new Error('SimpleHandler：xhr对象创建失败，没有合适的xhr对象！');
+        }
+    }
 
 };
 </script>
