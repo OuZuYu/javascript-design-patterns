@@ -7,16 +7,20 @@
     <title>工厂模式</title>
 </head>
 <body>
+请打开控制台查看实例运行结果！！！
 
 <script src="utils.js"></script>
 <script>
 window.onload = function () {
+    // 概述：工厂模式就是在一个对象中创建并返回实例。
 
     // ##### 简单工厂模式：用一个单体或者类生成并返回实例。 #####
     /*
         自行车商店实例：
         一个商店有多种类型的自行车出售。
     */
+
+    console.log('自行车商店实例:');
 
     // 自行车
     function Speedster() {};
@@ -73,9 +77,11 @@ window.onload = function () {
     let shop = new BicycleShop();
     let newBike = shop.sellBicycle('speedster');
 
-    // 如果要增加新车型，就得修改sellBicycle，尽管该方法的功能、逻辑并无改变，更好的做法是把创建新自行车的工作转交给简单工厂对象。
-    // 这里使用单体，也可以是一个类，如果只需单个的话，那么写成单体的方法或者公用静态方法都行，如果有多个，比如不同品牌下不同类型的
-    // 自行车，那么可以写成类来派生子类。
+    /*
+        如果要增加新车型，就得修改sellBicycle，尽管该方法的功能、逻辑并无改变，更好的做法是把创建新自行车的工作转交给简单工厂对象。
+        这里使用单体，也可以是一个类，如果只需单个的话，那么写成单体的方法或者类的公用静态方法都行，如果有多个，比如不同品牌下不同类型的
+        自行车，那么可以写成类来派生子类。
+    */
     let BicycleFactory = {
         createBicycle(model) {
             let bicycle;
@@ -107,7 +113,7 @@ window.onload = function () {
         }
     };
 
-    // ##### 工厂模式：不是想简单工厂函数一样，使用另外的对象创建实例，而是推迟到子类中实例化。 #####
+    // ##### 工厂模式：不是像简单工厂函数一样，使用另外的对象创建实例，而是写在自身但推迟到子类中实例化。 #####
     let BicycleShop2 = function () {};
     BicycleShop2.prototype = {
         sellBicycle(model) {
@@ -125,6 +131,7 @@ window.onload = function () {
         }
     }
 
+    // 喜德盛牌自行车子类！
     let Xds = function() {};
     extend(Xds, BicycleShop2);
     Xds.prototype.createBicycle = function (model) {
@@ -148,6 +155,17 @@ window.onload = function () {
 
     let xds = new Xds();
     xds.sellBicycle('speedster');
+
+    /*
+        ##### 工程模式适用场景：#####
+        1 需要用不同方式实现同一接口时（如上例，不同的自行车类型，实现同一个创建自行车实例的功能）这种类型的选择可以是显式或隐式的（上例自行车为显式，下例XHR为隐式）。
+        2 需要为对象进行复杂而相关的设置时，这种设置当然可以分散地写在各种类中，但是最好用工厂模式将这种设置集中管理。
+        3 需要用各种小对象组成大对象时，像自行车的例子，可以把车轮、链条、车架等作为小对象，组成大对象自行车，某天你为自行车配上某种链条，要有一天想更换另外一种链条，使用这种工程模式使得这很容易做到。（RSS实例中演示了此场景）
+    */
+
+    // ##### 实例：XHR工厂 #####
+
+
 };
 </script>
 </body>
