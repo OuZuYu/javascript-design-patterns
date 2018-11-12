@@ -206,6 +206,117 @@ window.onload = function () {
         }
     }
 
+    /*
+        上面的例子用一个工厂函数动态创建xhr对象
+        假设还有两种封装xhr的类，那么还可以创建一个工厂函数创建合适的实例。
+        现在加上两种类，第一种是确保前面的请求已经成功，再请求；第二种是断网时，会先保存请求。
+    */
+    let QueueHandler = function () {
+        this.queue = [];
+        this.requestInProgress = false; // 所有请求是否已完成标识
+        this.retryDelay = 5;
+    };
+    extend(QueueHandler, SimpleHandler);
+
+    // 如果还有请求未完成且不覆盖则先存到队列。
+    // 请求成功后，取队列中下一个继续请求。
+    QueueHandler.prototype.request = function (method, url, callback, postVars, override) {
+        if (this.requestInProgress && !override) {
+            this.queue.push({ method, url, callback, postVars, override });
+        } else {
+            this.requestInProgress = true;
+            let xhr = this.createXhrObject();
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState !== 4) return;
+                if (xhr.status === 200) {
+                    callback.success(xhr.responseText, xhr.responseXML);
+                    this.advanceQueue();
+                } else {
+                    callback.failure(xhr.status);
+                    setTimeout(() => {
+                        this.request(method, url, callback, postVars, override);
+                    }, this.retryDelay * 1000);
+                }
+            }
+
+            xhr.open(method, url, true);
+            xhr.send(postVars);
+        }
+    }
+
+    QueueHandler.prototype.advanceQueue = function () {
+        if (this.queue.length === 0) {
+            this.requestInProgress = false;
+            return;
+        }
+
+        let req = this.queue.shift();
+        this.request(req.method, req.url, req.callback, req.postVars, true)
+    }
+
+
+    let OfflineHandler = function () {
+        this.storedRequests = [];
+    }
+    extend(OfflineHandler, SimpleHandler);
+    OfflineHandler.prototype.request = function (method, url, callback, postVars) {
+        if (XhrManager.isOffline()) {
+            this.storedRequests.push({
+                method,
+                url,
+                callback,
+                postVars
+            });
+        } else {
+            this.flushStoredRequests();
+            OfflineHandler.superclass.request(method, url, callback, postVars);
+        }
+    }
+
+    OfflineHandler.prototype.flushStoredRequests = function () {
+        for (let i of this.storedRequests) {
+            OfflineHandler.superclass.request(i.method, i.url, i.callback, i.postVars);
+        }
+    }
+
+    // 现在有三个封装xhr的类，那么可以用一个工厂函数创建合适的类。
+    let XhrManager = {
+        createXhrHandler() {
+            let xhr;
+            if (this.isOffline()) {
+                xhr = new OfflineHandler();
+            } else if (this.isHighLatency()) {
+                xhr = new QueueHandler();
+            } else {
+                xhr = new SimpleHandler();
+            }
+
+            Interface.ensureImplements(xhr, Ajaxhandler);
+            return xhr;
+        },
+
+        isOffline() {
+            // 用simpleHandler发起一个请求，如果成功则是有网
+        },
+
+        isHighLatency() {
+            // 用simpleHandler发起一系列请求，计算响应时间，看网络是否延迟严重。
+        }
+    }
+
+    // 现在可以使用这个工厂函数。
+    let myHandler = XhrManager.createXhrHandler();
+    myHandler.request('GET', 'script.php', {
+        success() {
+
+        },
+        failure() {
+
+        }
+    });
+
+    // ##### RSS阅读器 #####
+
 };
 </script>
 </body>
