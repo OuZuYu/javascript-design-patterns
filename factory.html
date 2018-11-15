@@ -315,8 +315,100 @@ window.onload = function () {
         }
     });
 
-    // ##### RSS阅读器 #####
+    /*  ##### RSS阅读器 #####
+        将一个xhr对象，一个显示列表的对象，一个配置对象组成RSS阅读器，这时适合用一个工厂函数返回这个RSS阅读器实例。
+    */
 
+    // 现在定义一个显示列表的类。
+    let DisplayModule = new Interface('DisplayModule', ['append', 'remove', 'clear']);
+
+    let listDisplay = function (id, parent) {
+        this.list = document.createElement('ul');
+        this.list.id= id;
+        this.parent.append(this.list);
+    };
+
+    listDisplay.prototype = {
+        append(text) {
+            let newEl = document.createElement('li');
+            newEl.innerHTML = text;
+            this.list.append(newEl);
+            return newEl;
+        },
+
+        remove(el) {
+            this.list.removeChild(el);
+        },
+
+        clear() {
+            this.list.innerHTML = '';
+        }
+    }
+
+    // 配置对象
+    let conf = {
+        id: 'cnnRss',
+        feedUrl: '', // 获取rss数据的url
+        updateInterval: 60,
+        parent: document.getElementById('rssListWrap');
+    }
+
+    // 现在定义一个RSS阅读器类，由xhr类和listDisplay类组成。
+    let FeedReader = function (display, xhrHandler, conf) {
+        this.display = display;
+        this.xhrHandler = xhrHandler;
+        this.conf = conf;
+
+        this.startUpdate();
+    }
+
+    FeedReader.prototype = {
+        startUpdate() {
+            this.fetchFeed(); // 获取RSS数据
+
+            // 每隔一段时间获取一次
+            this.interval = setInterval(() => {
+                this.fetchFeed();
+            }, this.conf.updateInterval * 1000);
+        },
+
+        stopUpdate() {
+            clearInterval(this.interval);
+        },
+
+        fetchFeed() {
+            this.xhrHandler.request('GET', this.conf.feedUrl, {
+                success(text, xml) {
+                    this.parseFeed(text, xml);
+                },
+                error(status) {
+                    this.showError(status);
+                }
+            })
+        },
+
+        parseFeed(resText, resXml) {
+            this.display.append(`<a href='${resText}'>RSS</a>`);
+        },
+
+        showError() {
+            this.display.clear();
+            this.display.append('ERROR');
+        }
+    }
+
+    // 已经有了三个小对象，现在定义一个工厂函数把小对象组装成RSS对象。
+    let FeedManager = {
+        createFeedReader(conf) {
+            let displayModule = new listDisplay(conf.id, conf.parent);
+            Interface.ensureImplements(displayModule, DisplayModule);
+
+            let xhrHandler = XhrManager.createXhrHandler();
+            Interface.ensureImplements(xhrHandler, Ajaxhandler);
+
+            return new FeedReader(displayModule, xhrHandler, conf);
+        }
+    }
 };
 </script>
 </body>
