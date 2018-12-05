@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>桥接模式</title>
+</head>
+<body>
+<button id="beerBtn">get beer</button>
+
+<div>
+    <h1>ajax队列</h1>
+    <div>
+        先添加请求到队列，然后可以进行操作！
+        设定的请求重试次数为3次，超时为3秒。
+    </div>
+    <h1>队列：</h1><div id="queue-items"></div> <!-- 队列 -->
+    <div id="addStuff">
+        <h2>添加请求到队列</h2>
+        <ul id="adders"> <!-- 添加按钮 -->
+            <li><a href="#" id="action-01">Add "段子1"</a></li>
+            <li><a href="#" id="action-02">Add "段子2"</a></li>
+            <li><a href="#" id="action-03">Add "段子3"</a></li>
+        </ul>
+    </div>
+    <h2>操作</h2>
+    <ul id="items"> <!-- 操作 -->
+        <li><a href="#" id="flush">flush</a></li>
+        <li><a href="#" id="dequeue">dequeue</a></li>
+        <li><a href="#" id="pause">pause</a></li>
+        <li><a href="#" id="clear">clear</a></li>
+    </ul>
+
+    <div id="results"></div> <!-- 结果 -->
+</div>
+
+<script src="utils.js"></script>
+<script>
+window.onload = function () {
+    /**
+     * 个人理解：
+     * 将抽象与实现分离。
+     * 分离成抽象函数和桥接函数，使他们可以独立变化，用一个桥接函数（该函数也许会桥接一些参数）进行具体实现，其中调用抽象函数。（抽象部分也不一定要写成函数，写在桥接函数中也行。如下面的actionDispatcher函数）
+     * 如下例，getBeerById是抽象函数，getBeerByIdBridge是桥接函数，其中可以写各种具体实现，如切割参数什么的，两者可以独立变化
+    */
+
+    let getBeerBtn = document.getElementById('beerBtn');
+    // 不好，将实现与可抽象的函数耦合在一起。
+    getBeerBtn.addEventListener('click', getBeerById);
+    function getBeerById(e) {
+        let id = this.id;
+        asyncRequest('GET', 'beer.uri?id=' + id, function (resp) {
+            console.log(resp.responseText);
+        })
+    }
+
+    // 好，通过桥接函数实现啤酒的获取。
+
+    // 抽象获取啤酒方法
+    function getBeerById(id, cb) {
+        asyncRequest('GET', 'beer.uri?id=' + id, function (resp) {
+            cb(resp.responseText);
+        })
+    }
+
+    // 通过桥接函数，完成抽象与实现分离。
+    getBeerBtn.addEventListener('click', getBeerByIdBridge);
+    function getBeerByIdBridge (e) {
+        getBeerById(this.id, function(beer) {
+            console.log(beer);
+        });
+    }
+
+    /**
+     * 其他例子
+    */
+    // 特权方法
+
+    // 联接多个类
+    let Class1 = function(a, b) {
+        this.a = a;
+        this.b = b;
+    }
+
+    let Class2 = function (c) {
+        this.c = c;
+    }
+
+    let bridgeClass = function (a, b, c) {
+        this.one = new Class1(a, b);
+        this.two = new Class2(c);
+    }
+
+    /**
+     *  通过一个XHR连接队列例子，更深入理解桥接模式！
+     *  先把队列开发出来，再使用桥接模式优化！
+     * */
+
+    // 添加请求系统
+    let asyncRequest = (function() {
+        function handleReadyState(o, callback) {
+            let poll = window.setInterval(() => {
+                if (o && o.readyState === 4) {
+                    window.clearInterval(poll);
+                    if (callback) {
+                        callback(o);
+                    }
+                }
+            });
+        };
+
+        // xhr创建工厂
+        let getXHR = function() {
+            let http;
+            try {
+                http = new XMLHttpRequest;
+                getXHR = function () {
+                    return new XMLHttpRequest;
+                }
+            } catch (e) {
+                let msxml = ['MSXML2.XMLHTTP.3.0', 'MSXML2.XMLHTTP'];
+                for (let i = 0, len = msxml.length; i < len; ++i) {
+                    try {
+                        http = new ActiveXObject(msxml[i]);
+                        getXHR = function() {
+                            return new ActiveXObject(msxml[i]);
+                        };
+                        break;
+                    } catch (e) {}
+                }
+            }
+            return http;
+        }
+
+        return function(method, uri, callback, postData = null) {
+            let http = getXHR();
+            http.open(method, uri, true);
+            handleReadyState(http, callback);
+            http.send(postData);
+            return http;
+        }
+    })();
+
+    // 添加观察者系统
+    let Observer = function () {
+        this.fns = [];
+    }
+
+    Observer.prototype = {
+        subscribe (fn) {
+            this.fns.push(fn);
+        },
+
+        unsubscribe (fn) {
+            this.fns.filter(el => el !== fn);
+        },
+
+        fire (o) {
+            this.fns.forEach(el => { el(o) });
+        }
+    }
+
+    Function.prototype.method = function (name, fn) {
+        this.prototype[name] = fn;
+        return this;
+    }
+
+    let Queue = function () {
+        this.queue = [];
+
+        this.onComplete = new Observer(); // 全部执行完就触发。
+        this.onFailure = new Observer(); // 超过retryCount都超时就是失败了。
+        this.onFlush = new Observer(); // 每执行完一个就触发。
+
+        this.retryCount = 3;
+        this.currentRetry = 0;
+        this.paused = false;
+        this.timeout = 5000;
+        this.conn = {}; // 请求对象。
+        this.timer = {};
+    }
+
+    Queue.prototype = {
+        flush () {
+            if (!this.queue.length) return;
+
+            if (this.paused) {
+                this.paused = false;
+                return;
+            }
+
+            this.currentRetry++;
+
+            let abort = () => {
+                this.conn.abort();
+
+                if (this.currentRetry === this.retryCount) {
+                    this.onFailure.fire();
+                    this.currentRetry = 0;
+                } else {
+                    this.flush();
+                }
+            }
+
+            // 超过设定的时间则终止
+            this.timer = setTimeout(abort, this.timeout);
+
+            // 请求成功回调
+            let callback = (o) => {
+                clearTimeout(this.timer); // 清除timer
+                this.currentRetry = 0; // 初始化重试次数
+                this.queue.shift(); // 切掉第一个请求
+                this.onFlush.fire(o.responseText);
+
+                if (this.queue.length === 0) {
+                    this.onComplete.fire();
+                    return;
+                }
+
+                this.flush();
+            };
+
+            let item = this.queue[0];
+            this.conn = asyncRequest(item['method'], item['uri'], callback, item['params']);
+        },
+
+        setRetryCount (count) {
+            this.retryCount = count;
+        },
+
+        setTimeout (time) {
+            this.timeout = time;
+        },
+
+        add (o) {
+            this.queue.push(o);
+        },
+
+        pause () {
+            this.paused = true;
+        },
+
+        dequeue () {
+            this.queue.pop();
+        },
+
+        clear () {
+            this.queue = [];
+        }
+    }
+    // Queue.method('flush', () => {
+    //     console.log(this)
+    //     if (!this.queue.length) return;
+
+    //     if (this.paused) {
+    //         this.paused = false;
+    //         return;
+    //     }
+
+    //     this.currentRetry++;
+
+    //     let abort = () => {
+    //         this.conn.abort();
+
+    //         if (this.currentRetry === this.retryCount) {
+    //             this.onFailure.fire();
+    //             this.currentRetry = 0;
+    //         } else {
+    //             this.flush();
+    //         }
+    //     }
+
+    //     // 超过设定的时间则终止
+    //     this.timer = setTimeout(abort, this.timeout);
+
+    //     // 请求成功回调
+    //     let callback = (o) => {
+    //         clearTimeout(this.timer); // 清除timer
+    //         this.currentRetry = 0; // 初始化重试次数
+    //         this.queue.shift(); // 切掉第一个请求
+    //         this.onFlush.fire(o.responseText);
+
+    //         if (this.queue.length === 0) {
+    //             this.onComplete.fire();
+    //             return;
+    //         }
+
+    //         this.flush();
+    //     };
+
+    //     let item = this.queue[0];
+    //     this.conn = asyncRequest(item['method'], item['uri'], callback, item['params']);
+    // }).
+    // method('setRetryCount', count => {
+    //     this.retryCount = count;
+    // }).
+    // method('setTimeout', time => {
+    //     this.timeout = time;
+    // }).
+    // method('add', o => {
+    //     console.log(123123123)
+    //     console.log(this)
+    //     this.queue.push(o);
+    // }).
+    // method('pause', () => {
+    //     this.paused = true;
+    // }).
+    // method('dequeue', () => {
+    //     this.queue.pop();
+    // }).
+    // method('clear', () => {
+    //     this.queue = [];
+    // });
+
+    let q = new Queue();
+    q.setRetryCount(3);
+    q.setTimeout(3000);
+
+
+    let items = document.getElementById('items');
+    let results = document.getElementById('results');
+    let queue = document.getElementById('queue-items');
+    let adders = document.getElementById('adders');
+    let requests = []; // 存任务
+
+    q.onFlush.subscribe(function (data) { // 每执行完一个请求回调
+        results.innerHTML = data;
+        requests.shift();
+        queue.innerHTML = requests.toString();
+    });
+
+    q.onFailure.subscribe(function () { // 全部请求失败回调
+        results.innerHTML = '请求失败';
+    });
+
+    q.onComplete.subscribe(function () { // 全部请求完成回调
+        results.innerHTML = '请求完成，请在开发者工具查看！';
+    });
+
+    adders.addEventListener('click', function(e) {
+        e.preventDefault();
+        let src = e.target;
+        addRequestClick(src.id);
+    })
+
+    // 桥接函数中可进行具体的实现（如下面的切割参数），然后调用抽象函数。
+    var addRequestClick = function (req) {
+        addRequest(req.split('-')[1]);
+    };
+
+    var addRequest = function (id) {
+        q.add({
+            method: 'GET',
+            uri: 'https://www.apiopen.top/satinApi?type=' + id,
+            params: null
+        })
+        requests.push(id);
+        queue.innerHTML = requests.toString();
+    }
+
+    items.onclick = (e) => {
+        e.preventDefault();
+        let src = e.target;
+        actionDispatcher(src.id)
+    }
+
+    function actionDispatcher (element) {
+        switch (element) {
+            case 'flush':
+                q.flush();
+                break;
+            case 'dequeue':
+                q.dequeue();
+                requests.pop();
+                queue.innerHTML = requests.toString();
+                break;
+            case 'pause':
+                q.pause();
+                break;
+            case 'clear':
+                q.clear();
+                requests = [];
+                queue.innerHTML = '';
+                break;
+        }
+    }
+
+    /**
+     * 利与弊：
+     * 利：
+     *  增强维护性，独立的管理各组成部分，bug也更容易查找。
+     *  使得接口可被测试。
+     *
+     * 弊：
+     *  因增多函数调用，性能略有减弱。
+     *
+     * 总之别滥用就行！比如一个函数根本不会在桥接函数之外调用，那么这个桥接函数是不需要的！
+      */
+}
+</script>
+</body>
+</html>

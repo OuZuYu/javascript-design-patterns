@@ -35,6 +35,11 @@ function extend(subClass, superClass) {
     subClass.prototype.constructor = subClass;
     subClass.superclass = superClass.prototype;
 
+    /**
+     *  以下代码的作用：
+     *  例如 superClass.prototype = {}
+     *  这种情况把superClass.prototype.constructor 设置回 superClass
+     *  */
     if (superClass.prototype.constructor === Object.prototype.constructor) {
         superClass.prototype.constructor = superClass;
     }
