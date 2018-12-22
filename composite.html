@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>组合模式</title>
+    <style>
+        .gallery-image {
+            width: 100px;
+            height: 100px;
+        }
+    </style>
+</head>
+<body>
+<h2>
+    使用组合模式组合表单1和表单2
+</h2>
+<div id="formWrap">
+    <div class="form1-wrap">
+        <h3>表单1</h3>
+        <div id="form1"></div>
+    </div>
+    <div class="form2-wrap">
+        <h3>表单2</h3>
+        <div id="form2"></div>
+    </div>
+</div>
+<div id="btnWrap">
+    <div class="tip">
+        说明：保存后自行查看localstorage，为了更清晰的看到保存的结果，执行下一次保存前请先清空！
+    </div>
+    <button id="saveForm1">保存表单1</button>
+    <button id="saveForm2">保存表单2</button>
+    <button id="saveNameFieldset">保存姓名fieldset</button>
+    <button id="clearLocalstorage">清空localstorage</button>
+</div>
+<br>
+<br>
+<br>
+<div class="img-wrap">
+    <div>
+        图片库实例：这里创建了两个图片库对象，其中一个隐藏了，具体请看代码！
+    </div>
+    <div id="imgs">
+
+    </div>
+</div>
+<script src="utils.js"></script>
+<script>
+window.onload = function () {
+    /**
+     * 组合模式：
+     * 1 可随意所欲的组合一批对象
+     * 2 一条命令可对所有或部分对象进行向下传递的操作
+     *
+     * 综上可知，适用组合模式的情况是：
+     * 1 有一批对象需要组织成某种结构
+     * 2 需要对这批对象或一部分实施向下传递的操作
+    */
+
+    /**
+     * 动态表单实例:
+     * 需要设计一份表单，实现保存表单数据功能，并且是动态的，根据不同的用户展示不同的输入域。
+     *
+     * 这个例子适用组合模式：
+     * 1 这批表单是动态的，可以随意组织。
+     * 2 一条命令即可向下对输入域执行保存或验证。
+     *
+     * 循环执行子的save方法即可，子有可能是组合对象，也有可能是叶对象，组合对象只是用来连接，所以save功能是循环执行子的save，而叶对象的save则是保存，用来被组合对象循环执行。
+    */
+
+    /**
+     * 设计：
+     * 1 设计一个CompositeForm类
+     * 2 设计一个CompositeFieldset类
+     * 3 设计一个FieldItem类
+     * 4 汇合起来：FieldItem组合成CompositeFieldset，CompositeFieldset组合成CompositeForm，可随意组合。
+     */
+
+    let Composite = new Interface('Composite', ['add', 'remove', 'getChild']);
+    let FormItem = new Interface('FormItem', ['save']);
+
+    let CompositeForm = function (id, method = 'post', action = '#') {
+        this.formComponents = []; // 用来存子对象，用数组和对象都可，下面有使用对象的演示。
+
+        this.element = document.createElement('form');
+        this.element.id = id;
+        this.element.method = method;
+        this.element.action = action;
+    }
+
+    CompositeForm.prototype = {
+        add (child) {
+            // 因为需要存的子对象可以是叶对象，也可以是组合对象，所以必须满足这两个接口。
+            Interface.ensureImplements(child, Composite, FormItem);
+            this.formComponents.push(child);
+            this.element.appendChild(child.getElement());
+        },
+
+        remove (child) {
+            let index = this.formComponents.findIndex(val => val === child);
+            this.formComponents.splice(index, 1);
+        },
+
+        getChild (i) {
+            return this.formComponents[i];
+        },
+
+        save () {
+            for (let i = 0, node; node = this.getChild(i); i++) {
+                node.save();
+            }
+        },
+
+        getElement () {
+            return this.element;
+        }
+    }
+
+    let CompositeFieldset = function (id, legendText) {
+        this.components = {}; //  键为子对象id，值为子对象。
+
+        this.element = document.createElement('fieldset');
+        this.element.id = id;
+
+        if (legendText) {
+            this.legend = document.createElement('legend');
+            this.legend.appendChild(document.createTextNode(legendText));
+            this.element.appendChild(this.legend);
+        }
+    }
+
+    CompositeFieldset.prototype = {
+        add (child) {
+            Interface.ensureImplements(child, Composite, FormItem);
+            this.components[child.getElement().id] = child;
+            this.element.appendChild(child.getElement());
+        },
+
+        remove (child) {
+            delete this.components[child.getElement().id];
+        },
+
+        save () {
+            for (let key of Object.keys(this.components)) {
+                this.components[key].save();
+            }
+        },
+
+        getElement () {
+            return this.element;
+        },
+
+        getChild (id) {
+            return this.components[id] || null;
+        }
+    }
+
+    // 由于输入域有文本，选择器，多行文本等等，所以先定义一个Field抽象类。
+    function Field (id) {
+        this.id = id;
+        this.element;
+    }
+
+    Field.prototype = {
+        add () {},
+        getChild () {},
+        remove () {},
+
+        save () {
+            localStorage[this.id] = this.getValue();
+        },
+
+        getElement () {
+            return this.element;
+        },
+
+        getValue () {
+            throw new Error('不能在Field类调用getValue方法。');
+        }
+    }
+
+    function InputField (id, label) {
+        Field.call(this, id);
+
+        this.input = document.createElement('input');
+        this.input.id = id;
+
+        this.label = document.createElement('label');
+        this.label.appendChild(document.createTextNode(label));
+
+        this.element = document.createElement('div');
+        this.element.id = id;
+        this.element.appendChild(this.label);
+        this.element.appendChild(this.input);
+    }
+    extend(InputField, Field);
+
+    // 复写抽象方法
+    InputField.prototype.getValue = function () {
+        return this.input.value;
+    }
+
+    function SelectField (id, label, options) {
+        if (!Array.isArray(options)) {
+            throw new Error('参数options请期望是Array类型。')
+        }
+
+        Field.call(this, id);
+
+        this.select = document.createElement('select');
+        this.select.id = id;
+
+        for (let i = 0, len = options.length; i < len; i++) {
+            this.select.options[i] = new Option(options[i], options[i]);
+        }
+
+        this.label = document.createElement('label');
+        this.label.appendChild(document.createTextNode(label));
+
+        this.element = document.createElement('div');
+        this.element.id = id;
+        this.element.appendChild(this.label);
+        this.element.appendChild(this.select);
+    }
+    extend(SelectField, Field);
+    SelectField.prototype.getValue = function () {
+        return this.select.options[this.select.selectedIndex].value;
+    }
+
+    let form1 = new CompositeForm('form1');
+
+    let nameFieldset = new CompositeFieldset('nameFieldset', '姓名');
+    nameFieldset.add(new InputField('firstName', '名字'));
+    nameFieldset.add(new InputField('lastName', '姓氏'));
+
+    let addressFieldset = new CompositeFieldset('address', '地址');
+    addressFieldset.add(new InputField('adress-input', '地址'));
+    addressFieldset.add(new SelectField('province', '省份', ['广东省', '浙江省', '上海']));
+
+    form1.add(nameFieldset);
+    form1.add(addressFieldset);
+
+    document.getElementById('form1').appendChild(form1.getElement());
+
+    let form2 = new CompositeForm('form2');
+
+    let contactFieldset = new CompositeFieldset('contactFieldset', '联系');
+    contactFieldset.add(new InputField('emailInput', '邮箱'));
+    contactFieldset.add(new InputField('phoneInput', '手机'));
+
+    let hobbyFieldset = new CompositeFieldset('hobbyFieldset', '兴趣');
+    let hobbies = ['乒乓球', '羽毛球', '足球'];
+    hobbyFieldset.add(new SelectField('hobby1', '兴趣1', hobbies));
+    hobbyFieldset.add(new SelectField('hobby2', '兴趣2', hobbies));
+
+    form2.add(contactFieldset);
+    form2.add(hobbyFieldset);
+
+    document.getElementById('form2').appendChild(form2.getElement());
+
+    document.getElementById('saveForm1').onclick = function () {
+        form1.save();
+    }
+    document.getElementById('saveForm2').addEventListener('click', () => { form2.save(); });
+    document.getElementById('saveNameFieldset').addEventListener('click', () => { nameFieldset.save(); });
+
+    document.getElementById('clearLocalstorage').onclick = function () {
+        localStorage.clear();
+    }
+
+    /**
+     * 添加更多操作：
+     * 目前只有save操作，如果要添加更多操作，维护起来也很方便，只需给CompositeForm和CompositeFieldset加上循环执行子的代码，给Field加上对应操作代码。
+    */
+
+    // 图片库
+    let GalleryComposite = new Interface('Composite', ['add', 'remove', 'getChild']);
+    let GalleryItem = new Interface('GalleryItem', ['hide', 'show']);
+
+    let DynamicGallery = function (id) {    // 实现Composite，GalleryItem组合对象类
+        this.children = [];
+
+        this.element = document.createElement('div');
+        this.element.id = id;
+        this.element.className = 'dynamic-gallery';
+    }
+
+    DynamicGallery.prototype = {
+        add (child) {
+            Interface.ensureImplements(child, GalleryComposite, GalleryItem);
+            this.children.push(child);
+            this.element.appendChild(child.getElement());
+        },
+
+        remove (child) {
+            for (let node, i = 0; node = this.getChild(i); i++) {
+                if (node == child) {
+                    this.children.splice(i, 1);
+                    break;
+                }
+            }
+            this.element.removeChild(child.getElement());
+        },
+
+        getChild (i) {
+            return this.children[i];
+        },
+
+
+        hide () {
+            for (let node, i = 0; node = this.getChild(i); i++) {
+                node.hide();
+            }
+            this.element.style.display = 'none';
+        },
+
+        show () {
+            this.element.style.display = 'block';
+            for (let node, i = 0; node = this.getChild(i); i++) {
+                node.show();
+            }
+        },
+
+        getElement () {
+            return this.element;
+        }
+    }
+
+    let GalleryImage = function (src) {
+        this.element = document.createElement('img');
+        this.element.className = 'gallery-image';
+        this.element.src = src;
+    }
+    GalleryImage.prototype = {
+        add () { },
+        remove () { },
+        getChild () { },
+
+        hide () {
+            this.element.style.display = 'none';
+        },
+
+        show () {
+            this.element.style.display = '';
+        },
+
+        getElement () {
+            return this.element;
+        }
+    }
+
+    let topGallery = new DynamicGallery('top-gallery');
+    topGallery.add(new GalleryImage('http://pic3.nipic.com/20090702/918855_174429094_2.jpg'));
+    topGallery.add(new GalleryImage('http://pic18.nipic.com/20111210/2377880_102714258476_2.jpg'));
+
+    let vacationPhotos = new DynamicGallery('vacation-photos');
+    vacationPhotos.add(new GalleryImage('http://pic15.nipic.com/20110715/7935001_120846634125_2.jpg'));
+    vacationPhotos.add(new GalleryImage('http://pic17.nipic.com/20111023/8104044_230939695000_2.jpg'));
+
+    topGallery.add(vacationPhotos);
+    document.getElementById('imgs').appendChild(topGallery.getElement());
+    topGallery.show();
+    vacationPhotos.hide();
+
+    /**
+     * 利弊
+     * 利：
+     *    一条命令即可执行复杂的效果，不需循环。
+     *    可维护性强
+     * 弊：
+     *    因每次操作都涉及到子对象，如果层次体系很庞大，多个循环会消耗性能。
+     *    组合模式多用于用户界面构建，所以要遵循html规则，对于表格这种结构出层次就不像表单那么明显了。
+    */
+};
+</script>
+</body>
+</html>
