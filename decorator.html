@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>装饰者模式</title>
+</head>
+<body>
+
+<script src="utils.js"></script>
+<script>
+window.onload = function () {
+    /*
+    * 装饰者模式：
+    * 给对象灵活的增加特性，而不用创建子类。
+    * 通过传递原对象，不需装饰的使用原对象的方法，而需要装饰的则修改的方式替代继承后修改。
+    */
+
+    /**
+    * 沿用工厂模式中自行车商店的例子，加入要给自行车加各种功能（铃铛、车灯、车尾座），并且价格会随功能增加而增加，一种做法是派生很多子类，继承自行车类，修改其装配和获取价格的方法，考虑到功能增多，各种组合也增多时，会导致派生很多子类，导致难以维护，此时装饰者模式更适用。
+    */
+
+    // 接口的作用：使得装饰者可以替代组件（有相同的方法）
+    let Bicycle = new Interface('Bicycle', ['assemble', 'wash', 'ride', 'repair']);
+
+    function Bike () {
+
+    }
+
+    Bike.prototype = {
+        assemble() {
+            return 'assemble';
+        },
+
+        wash() {
+            return 'wash';
+        },
+
+        ride() {
+            return 'ride';
+        },
+
+        repair() {
+            return 'repair';
+        },
+
+        getPrice() {
+            return 399.00;
+        }
+    }
+
+    /**
+    * 这个装饰者的母亲，称为组件。其实不一定要专门定义一个组件，当有很多类似的装饰者时可以这样做，用来继承方便很多。
+    */
+    let BicycleDecorator = function (bike) {
+        Interface.ensureImplements(bike, Bicycle);
+        this.bicycle = bike;
+    }
+
+    BicycleDecorator.prototype = {
+        assemble () {
+            return this.bicycle.assemble();
+        },
+
+        wash () {
+            return this.bicycle.wash();
+        },
+
+        ride () {
+            return this.bicycle.ride();
+        },
+
+        repair () {
+            return this.bicycle.repair();
+        },
+
+        getPrice () {
+            return this.bicycle.getPrice();
+        }
+    }
+
+    // 头灯装饰者
+    let HeadlightDecorator = function (bike) {
+        HeadlightDecorator.superclass.constructor.call(this, bike);
+    }
+    extend(HeadlightDecorator, BicycleDecorator);
+
+    // 添加装饰（修改一些方法）
+    HeadlightDecorator.prototype.assemble = function () {
+        return this.bicycle.assemble() + 'headlight';
+    }
+    HeadlightDecorator.prototype.getPrice = function () {
+        return this.bicycle.getPrice() + 15.00;
+    }
+
+    // 尾灯装饰者
+    let TaillighDecorator = function (bike) {
+        TaillighDecorator.superclass.constructor.call(this, bike);
+    }
+    extend(TaillighDecorator, BicycleDecorator);
+    TaillighDecorator.prototype.assemble = function () {
+        return this.bicycle.assemble() + 'tailligh';
+    }
+    TaillighDecorator.prototype.getPrice = function () {
+        return this.bicycle.getPrice() + 9.00;
+    }
+
+    // 装饰者使用
+    let bick = new Bike();
+
+    // 加上车头灯
+    bick = new HeadlightDecorator(bick);
+
+    // 加上车尾灯
+    bick = new TaillighDecorator(bick);
+
+    console.log(bick.getPrice()); // 399 + 15 + 9 = 423
+
+    /* 装饰者模式和组合模式：
+     * 个人觉得区别挺大的啊，组合模式是循环调用子的方法，装饰者模式是在母的基础上加以装饰，且组合模式具有结构。
+     * 若是简单的组合模式，比如只有一个母和子，其实也可以看作装饰者模式，子修改了母的那个同名的方法。
+    */
+
+    /**
+    * 替换方法：有时需要整体替换旧的方法
+    * 如 修改为终身保修
+    */
+    let LifetimeWarrantyDecorator = function (bike, bellColor) {
+        BellDecorator.superclass.constructor.call(this, bike);
+    }
+    extend(LifetimeWarrantyDecorator, BicycleDecorator);
+    LifetimeWarrantyDecorator.prototype.repair = function () {
+        return '您可以享受终身保修';
+    }
+
+    LifetimeWarrantyDecorator.prototype.getPrice = function () {
+        return this.bicycle.getPrice() + 199.00;
+    }
+
+    // 也可以在满足条件时使用新方法，否则使用旧方法。
+    var TimedWarrantyDecorator = function (bicycle, coverageLengthInYears) {
+        this.superclass.constructor(bicycle);
+        this.coverageLength = coverageLengthInYears;
+        this.expDate = new Date();
+        var coverageLengthInMs = this.coverageLength * 365 * 24 * 60 * 60 * 1000;
+        expDate.setTime(expDate.getTime() + coverageLengthInMs); // 到达保修期的毫秒数
+    }
+    extend(TimedWarrantyDecorator, BicycleDecorator);
+    TimedWarrantyDecorator.prototype.repair = function () {
+        var repairInstructions;
+        var currentDate = new Date();
+        if (currentDate < expDate) {
+            repairInstructions = 'This bicycle is currently covered by a warranty. ' +
+                'Please take it to an authorized Acme Repair Center.';
+        }
+        else {
+            repairInstructions = this.bicycle.repair();
+        }
+        return repairInstructions;
+    };
+    TimedWarrantyDecorator.prototype.getPrice = function () {
+        return this.bicycle.getPrice() + (40.00 * this.coverageLength);
+    };
+
+    /*
+    * 在装饰者中修改参数 与 添加新方法：
+    */
+    // 也可以修改参数，增添一些属性。
+    let BellDecorator = function (bike, bellColor) {
+        BellDecorator.superclass.constructor.call(this, bike);
+        this.bellColor = bellColor;
+    }
+    extend(BellDecorator, BicycleDecorator);
+    BellDecorator.prototype.assemble = function () {
+        return this.bicycle.assemble() + this.bellColor + 'bell';
+    }
+
+    // 添加一个打铃的方法
+    BellDecorator.prototype.ringBell = function () {
+        return 'Bell rung';
+    }
+
+    // 添加了新方法的必须放在最后
+    let bike2 = new Bike();
+    bike2 = new HeadlightDecorator(bike2);
+    bike2 = new BellDecorator(bike2);
+    console.log(bike2.ringBell());
+
+    // 如果添加了新方法的不放在最后，则会被没有新方法的对象覆盖（新对象覆盖旧对象）。
+    let bike3 = new Bike();
+    bike3 = new BellDecorator(bike3);
+    bike3 = new HeadlightDecorator(bike3);
+    console.log(bike3.ringBell()); // 报错 not a function
+
+    /**
+    * 为了解决这个问题，可以修改母装饰者，若检测到非接口中的方法，则添加一下。
+    */
+    let BicycleDecorator2 = function (bike) {
+        this.bicycle = bicycle;
+        this.interface = Bicycle;
+
+        outerloop: for (var key in this.bicycle) {
+            if (typeof this.bicycle[key] !== 'function') {
+                continue outerloop;
+            }
+
+            for (var i = 0, len = this.interface.methods.length; i < len; i++) {
+                if (key === this.interface.methods[i]) {
+                    continue outerloop;
+                }
+            }
+
+            // 为什么要这样写：
+            // 原因是这里用var，指向的是同一个key即最后一个key。
+            /* for (var i = 0; i < 5; i++) {
+                console.log(i); // 5 5 5 5 5
+            }
+            for (var i = 0; i < 5; i++) {
+                (function (inval) {
+                    console.log(inval);
+                })(i);
+            } */
+            var that = this;
+            (function (methodName) {
+                that[methodName] = function () {
+                    return that.bicycle[methodName]();
+                };
+            })(key);
+        }
+    }
+
+    BicycleDecorator2.prototype = {
+        assemble() {
+            return this.bicycle.assemble();
+        },
+
+        wash() {
+            return this.bicycle.wash();
+        },
+
+        ride() {
+            return this.bicycle.ride();
+        },
+
+        repair() {
+            return this.bicycle.repair();
+        },
+
+        getPrice() {
+            return this.bicycle.getPrice();
+        }
+    }
+
+    // 工厂函数：可以定义一个工厂函数，返回合适的实例，可指定哪种自行车和指定哪些配件。
+    var AcmeBicycleShop = function () { };
+    extend(AcmeBicycleShop, BicycleShop);
+    AcmeBicycleShop.prototype.createBicycle = function (model, options) {
+        var bicycle = new AcmeBicycleShop.models[model]();
+
+        for (var i = 0, len = options.length; i < len; i++) {
+            var decorator = AcmeBicycleShop.options[options[i].name];
+            if (typeof decorator !== 'function') {
+                throw new Error('Decorator ' + options[i].name + ' not found.');
+            }
+            var argument = options[i].arg;
+            bicycle = new decorator(bicycle, argument);
+        }
+
+        Interface.ensureImplements(bicycle, Bicycle);
+        return bicycle;
+    };
+
+    // model和option使用静态属性即可，可以避免每个实例都创建一份。
+    AcmeBicycleShop.models = {
+        'The Speedster': AcmeSpeedster,
+        'The Lowrider': AcmeLowrider,
+        'The Flatlander': AcmeFlatlander,
+        'The Comfort Cruiser': AcmeComfortCruiser
+    };
+
+    AcmeBicycleShop.options = {
+        'headlight': HeadlightDecorator,
+        'taillight': TaillightDecorator,
+        'bell': BellDecorator,
+        'basket': BasketDecorator,
+        'color': FrameColorDecorator,
+        'lifetime warranty': LifetimeWarrantyDecorator,
+        'timed warranty': TimedWarrantyDecorator
+    };
+
+    // 创建装饰的自行车对象的两种不同做法
+    // 第一种做法不使用工厂，类名与客户代码紧密耦合在一起的类不下5个。
+    var myBicycle = new AcmeSpeedster();
+    myBicycle = new FrameColorDecorator(myBicycle, 'blue');
+    myBicycle = new HeadlightDecorator(myBicycle);
+    myBicycle = new TaillightDecorator(myBicycle);
+    myBicycle = new TimedWarrantyDecorator(myBicycle, 2);
+
+    // 第二种方法使用了工厂。解耦。
+    var alecsCruisers = new AcmeBicycleShop();
+    var myBicycle = alecsCruisers.createBicycle('The Speedster', [
+        { name: 'color', arg: 'blue' },
+        { name: 'headlight' },
+        { name: 'taillight' },
+        { name: 'timed warranty', arg: 2 }
+    ]);
+
+    /**
+    * 函数装饰者：
+    * 装饰者其实是对方法的返回值进行装饰，所以函数也可以有装饰者。
+    */
+    function upperCaseDecorator(func) {
+        return function () {
+            return func.apply(this, arguments).toUpperCase();
+        }
+    }
+    // 这个装饰者可以用来创建新函数
+    // 如下，先定义一个普通函数，然后将其装饰为一个新函数
+    function getDate() {
+        return (new Date()).toString();
+    }
+    getDateCaps = upperCaseDecorator(getDate);
+
+    alert(getDate()); // Returns Wed Sep 26 2007 20:11:02 GMT-0700 (PDT)
+    alert(getDateCaps()); // Returns WED SEP 26 2007 20:11:02 GMT-0700 (PDT)
+
+    /* 方法性能分析器装饰者：
+    */
+    // 先创建一个针对ListBuilder的装饰者的例子，一样是传原对象，对方法进行复写装饰。
+    var ListBuilder = function (parent, listLength) {
+        this.parentEl = document.getElementById(parent);
+        this.listLength = listLength;
+    };
+    ListBuilder.prototype = {
+        buildList: function () {
+            var list = document.createElement('ol');
+            this.parentEl.appendChild(list);
+
+            for (var i = 0; i < this.listLength; i++) {
+                var item = document.createElement('li');
+                list.appendChild(item);
+            }
+        }
+    };
+
+    // 装饰者
+    var SimpleProfiler = function (component) {
+        this.component = component;
+    };
+    SimpleProfiler.prototype = {
+        buildList: function () {
+            var startTime = new Date();
+            this.component.buildList();
+            var elapsedTime = (new Date()).getTime() - startTime.getTime();
+            console.log('buildList: ' + elapsedTime + ' ms');
+        }
+    };
+
+    // 使用
+    var list = new ListBuilder('list-container', 5000);
+    list = new SimpleProfiler(list);
+    list.buildList(); // Creates the list and displays "buildList: 298 ms".
+
+
+    // 通用版本：为对象的所有方法添加装饰。
+    var MethodProfiler = function (component) {
+        this.component = component;
+        this.timers = {};
+
+        for (var key in this.component) {
+            // Ensure that the property is a function.
+            if (typeof this.component[key] !== 'function') {
+                continue;
+            }
+
+            // Add the method.
+            var that = this;
+            (function (methodName) {
+                that[methodName] = function () {
+                    that.startTimer(methodName);
+                    var returnValue = that.component[methodName].apply(that.component,
+                        arguments);
+                    that.displayTime(methodName, that.getElapsedTime(methodName));
+                    return returnValue;
+                };
+            })(key);
+        }
+    };
+    MethodProfiler.prototype = {
+        startTimer: function (methodName) {
+            this.timers[methodName] = (new Date()).getTime();
+        },
+        getElapsedTime: function (methodName) {
+            return (new Date()).getTime() - this.timers[methodName];
+        },
+        displayTime: function (methodName, time) {
+            console.log(methodName + ': ' + time + ' ms');
+        }
+    };
+
+    /* 装饰者模式适用场合：
+       1 需要为类增加特性，且派生子类不实际时（数量组合多）。
+       2 为对象增加特性，而不想改动原对象时。
+    */
+
+    /* 接口的作用
+       装饰者模式中接口可以使得装饰者可以替代组件（母），让他们有相同的方法，不会把组件中的方法弄没了。
+       如果不使用接口，那么可以像上面方法性能的例子，为所有对象方法装饰，也许可以加些判断，只为某些方法装饰。
+    */
+    /* 利弊
+        利：
+            是运行期间为对象添加特性的有力工具
+        弊：
+            如果代码中有类型检测，那么装饰者对象和组件（母）类型是不同的。
+            装饰者模式增加代码复杂度，必须写好文档说明。
+    */
+}
+</script>
+</body>
+</html>
