@@ -10,10 +10,12 @@
 
 <script>
     /*
-        ##### 观察者模式（发布者-订阅者模式）API #####
-        相当于自己写事件！
-        发布者： 发布 传送
-        订阅者： 订阅 接收
+        ##### 观察者模式（发布者-订阅者模式）#####
+        什么是发布者-订阅者（观察者）模式？举个例子，比如你在报社订了一份人民日报，那么你就是订阅者，报社就是发布者，
+        这份报纸不只你订了，老王也订了，所以你和老王就被报社记录在名单中了，那么在适当的时机（新版报纸发布时），报社
+        就会把报纸传给你和老王，你俩拿到报纸，就可以对报纸进行阅读或其他操作了。
+        
+        个人觉得也可以理解为自定义事件，这些事件存放一些操作方法，在适当的时机，手动触发事件，循环执行这些操作同时把数据传到其参数中。
     */
 
     /**
@@ -22,18 +24,19 @@
      * 订阅者订阅发布者
     */
 
-    // 发布者: 储存订阅者，发布时，循环执行订阅者并把要发布的数据传进去；
+    // 发布者: 储存订阅者，在适当的时机，循环执行订阅者并把要发布的数据传给订阅者；
     function Publisher () {
-        this.subscribers = []; // 观察的成员引用
+        this.subscribers = []; // 储存订阅者
     };
 
+    // 发布方法，把数据传送到每个订阅者。
     Publisher.prototype.deliver = function (data) {
         this.subscribers.forEach((fn) => {
             fn(data);
         });
     };
 
-    // 订阅者：
+    // 订阅者其实就是一些方法，把订阅操作加在方法构造函数的原型里，这样每个方法实例都能使用subscribe方法。
     Function.prototype.subscribe = function (publisher) {
         // 写法1
         /* if (!publisher.subscribers.some(el => el === this)) {
@@ -63,16 +66,24 @@
         return this; */
     }
 
+    
     // ##### 超人飞行实例 #####
     function SupermanFly () {
+        
+        // 实例化发布者
         this.onStart = new Publisher();
         this.onComplete = new Publisher();
     }
 
     SupermanFly.prototype.fly = function () {
-        this.onStart.deliver('超人我起飞了');
+        
+        // 在飞行开始时触发onStart发布者
+        this.onStart.deliver('超人起飞了');
+        
         setTimeout(() => {
-            this.onComplete.deliver('超人我回来了');
+            
+            // 在飞行结束时触发onComplete发布者
+            this.onComplete.deliver('超人回来了');
         }, 1000);
     }
 
@@ -81,6 +92,8 @@
     function putOnCape (data) {
         console.log(data);
     }
+    
+    // 订阅者存到发布者中
     putOnCape.subscribe(superman.onStart);
 
     function tackOffCape (data) {
@@ -99,7 +112,7 @@
 
 
     /**
-     * 观察者系统1
+     * 观察者系统2：个人觉得这种写法更好，不用修改Function，因为在《编写可维护的JavaScript》中有提到不是你的对象不要乱动，修改原生对象并不是好习惯。
      * 从发布者的角度编写
      * 发布者加入订阅者
     */
