@@ -39,14 +39,13 @@
 <script>
 window.onload = function () {
     /**
-     * 个人理解：
      * 将抽象与实现分离。
-     * 分离成抽象函数和桥接函数，使他们可以独立变化，用一个桥接函数（该函数也许会桥接一些参数）进行具体实现，其中调用抽象函数。（抽象部分也不一定要写成函数，写在桥接函数中也行。如下面的actionDispatcher函数）
-     * 如下例，getBeerById是抽象函数，getBeerByIdBridge是桥接函数，其中可以写各种具体实现，如切割参数什么的，两者可以独立变化
-    */
+     * 分离成抽象函数和桥接函数，使他们不耦合在一起，可以独立变化，互不干扰，
+     * 如下例，getBeerById是抽象函数，getBeerByIdBridge是桥接函数，其中可以写各种具体实现功能的代码，如切割参数什么的
+     */
 
     let getBeerBtn = document.getElementById('beerBtn');
-    // 不好，将实现与可抽象的函数耦合在一起。
+    // 不好，将实现与抽象函数耦合在一起。
     getBeerBtn.addEventListener('click', getBeerById);
     function getBeerById(e) {
         let id = this.id;
@@ -57,7 +56,7 @@ window.onload = function () {
 
     // 好，通过桥接函数实现啤酒的获取。
 
-    // 抽象获取啤酒方法
+    // 获取啤酒抽象函数
     function getBeerById(id, cb) {
         asyncRequest('GET', 'beer.uri?id=' + id, function (resp) {
             cb(resp.responseText);
