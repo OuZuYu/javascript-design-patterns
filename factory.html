@@ -19,7 +19,6 @@ window.onload = function () {
         自行车商店实例：
         一个商店有多种类型的自行车出售。
     */
-
     console.log('自行车商店实例:');
 
     // 自行车
@@ -43,13 +42,6 @@ window.onload = function () {
     let Bicycle = new Interface('Bicycle', ['assemble', 'wash', 'ride', 'repair']);
 
     let BicycleShop = function() {};
-    /*
-        Q:为什么不写成实例方法？
-        实例共享即可，不需每个实例都一份功能相同的方法。
-
-        Q:为什么不写成公用静态方法？
-        因为可能开多个店（多个BicycleShop实例）。
-    */
     BicycleShop.prototype = {
         sellBicycle(model) {
             let bicycle;
@@ -78,9 +70,12 @@ window.onload = function () {
     let newBike = shop.sellBicycle('speedster');
 
     /*
-        如果要增加新车型，就得修改sellBicycle，尽管该方法的功能、逻辑并无改变，更好的做法是把创建新自行车的工作转交给简单工厂对象。
-        这里使用单体，也可以是一个类，如果只需单个的话，那么写成单体的方法或者类的公用静态方法都行，如果有多个，比如不同品牌下不同类型的
-        自行车，那么可以写成类来派生子类。
+        以上例子的缺点是：如果新增一种车型，就要往switch中增加一个case，如果车型很多这部分代码会很臃肿，这部分代码可以通过工厂模式优化
+    /*
+    /*
+        优化：
+        更好的做法是把创建新自行车的工作转交给简单工厂对象，让这个工厂函数返回合适的车型实例，这样优化后，只要有新车型，我们只需修改createBicycle方法，sellBicycle方法的逻辑也更加清晰
+        这里使用单体，当然也可以写成一个类
     */
     let BicycleFactory = {
         createBicycle(model) {
@@ -113,7 +108,8 @@ window.onload = function () {
         }
     };
 
-    // ##### 工厂模式：不是像简单工厂函数一样，使用另外的对象创建实例，而是写在自身但推迟到子类中实例化。 #####
+    // ##### 工厂模式：将工厂函数写成自身的抽象方法, 而不是像简单工厂函数那样把工厂函数写到另一个对象
+    // 好处是每个实例都能有不同的工厂函数，比如下面的例子，xds可以创建自己的工厂函数，另一个品牌，也可以创建自己的工厂函数。 #####
     let BicycleShop2 = function () {};
     BicycleShop2.prototype = {
         sellBicycle(model) {
@@ -125,7 +121,7 @@ window.onload = function () {
             return bicycle;
         },
 
-        // 抽象类，不能被实例化。
+        // 抽象方法
         createBicycle() {
             throw new Error('不允许操作抽象类!')
         }
@@ -133,7 +129,7 @@ window.onload = function () {
 
     // 喜德盛牌自行车子类！
     let Xds = function() {};
-    extend(Xds, BicycleShop2);
+    extend(Xds, BicycleShop2); // 喜德盛继承自行车商城
     Xds.prototype.createBicycle = function (model) {
         let bicycle;
 
@@ -158,9 +154,9 @@ window.onload = function () {
 
     /*
         ##### 工厂模式适用场景：#####
-        1 需要动态创建一些用不同方式实现同一接口的对象时，（如上例，动态创建各种实现了Bicycle接口的自行车）这种类型的选择可以是显式或隐式的（上例自行车为显式，下例XHR为隐式）。
-        2 需要为对象进行复杂而相关的设置时，这种设置当然可以分散地写在各种类中，但是最好用工厂模式将这种设置集中管理。
-        3 需要用各种小对象组成大对象时，像自行车的例子，可以把车轮、链条、车架等作为小对象，组成大对象自行车，某天你为自行车配上某种链条，要有一天想更换另外一种链条，使用这种工程模式使得这很容易做到。（RSS实例中演示了此场景）
+        1 需要动态创建实现同一接口的对象时，（如上例，动态创建各种实现了Bicycle接口的自行车）这种类型的选择可以是显式或隐式的（上例自行车为显式，下例XHR为隐式）。
+        2 需要为对象进行复杂的设置时，这种设置当然可以分散地写在各种类中，但是最好用工厂模式将这种设置集中管理。
+        3 需要用各种小对象组成大对象时，像自行车的例子，可以把车轮、链条、车架等作为小对象，组成大对象自行车，某天需要新增或更换零件，工程模式使得这很容易做到。（下面RSS实例中演示了这种场景）
     */
 
     // ##### 实例：XHR工厂 #####
@@ -319,7 +315,7 @@ window.onload = function () {
         将一个xhr对象，一个显示列表的对象，一个配置对象组成RSS阅读器，这时适合用一个工厂函数返回这个RSS阅读器实例。
     */
 
-    // 现在定义一个显示列表的类。
+    // 定义一个显示列表的类。
     let DisplayModule = new Interface('DisplayModule', ['append', 'remove', 'clear']);
 
     let listDisplay = function (id, parent) {
@@ -353,7 +349,7 @@ window.onload = function () {
         parent: document.getElementById('rssListWrap');
     }
 
-    // 现在定义一个RSS阅读器类，由xhr类和listDisplay类组成。
+    // 现在定义一个RSS阅读器类，参数为xhr类和listDisplay类以及conf配置对象。
     let FeedReader = function (display, xhrHandler, conf) {
         this.display = display;
         this.xhrHandler = xhrHandler;
@@ -397,7 +393,7 @@ window.onload = function () {
         }
     }
 
-    // 已经有了三个小对象，现在定义一个工厂函数把小对象组装成RSS对象。
+    // 定义一个工厂函数把listDisplay实例、xhr实例、conf配置对象，这三个小对象组装成RSS对象。
     let FeedManager = {
         createFeedReader(conf) {
             let displayModule = new listDisplay(conf.id, conf.parent);
