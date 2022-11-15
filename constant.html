@@ -11,14 +11,15 @@ window.onload = function() {
     // 方法1 使用es6的const
 
     // 方法2 创建只有取值器而没有赋值器的私用变量
-
+    /*
+        1. 利用立刻执行函数创建一个作用域
+        2. 创建一个构造函数，给构造函数加返回私有变量的静态方法
+        3. 返回构造函数
+    */
     let Class = (function() {
         let COUNT = 30; // 私用变量
 
         /*
-            Q:  这里为什么给构造函数命名ctor，然后 return ctor 而不是直接 return 一个方法？
-                因为要给构造函数赋予公用静态方法getCount
-
             Q:  那为什么不写成公用方法呢？
                 因为写成公用方法的话，需要创建实例才能调用。
         */
@@ -40,6 +41,17 @@ window.onload = function() {
     }
 
     console.log(Class.getCount());
+
+    // 构造函数改用对象，这样写不是更直接简洁吗？
+    let Class2 = (function () {
+        let COUNT = 30; // 私用变量
+        function getCount() {
+            return COUNT
+        }
+        return { getCount };
+    })();
+
+    console.log(Class2.getCount());
 }
 </script>
 </body>
