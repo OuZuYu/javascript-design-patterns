@@ -41,7 +41,8 @@ window.onload = function () {
     /**
      * 将抽象与实现分离。
      * 分离成抽象函数和桥接函数，使他们不耦合在一起，可以独立变化，互不干扰，
-     * 如下例，getBeerById是抽象函数，getBeerByIdBridge是桥接函数，其中可以写各种具体实现功能的代码，如切割参数什么的
+     * 如下例，getBeerById 是抽象函数，getBeerByIdBridge 是桥接函数，其中可以写各种具体实现功能的代码，如切割参数，数据处理
+     * 这样做的好处是 getBeerById 可以在不同地方，以不同方式处理，与实现解耦
      */
 
     let getBeerBtn = document.getElementById('beerBtn');
